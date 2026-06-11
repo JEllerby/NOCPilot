@@ -40,7 +40,7 @@ while True:
 
         print(
             f"Source: {metadata['source']} "
-            f"Chunk: {metadata['chunk_index']}"
+            f"Chunk: {metadata['chunk']}"
         )
 
         print(doc[:500])

@@ -31,8 +31,8 @@ COLLECTION_NAME = "network_docs"
 
 EMBED_MODEL = "BAAI/bge-base-en-v1.5"     # There are other models available, will have to test. 
                                            # Should download the model on first run. Will run offline after.
-CHUNK_SIZE = 512
-CHUNK_OVERLAP = 100
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
 
 # --------------------------------------------------
 # Init
@@ -55,7 +55,7 @@ splitter = RecursiveCharacterTextSplitter(
 # Helpers
 # --------------------------------------------------
 
-def file_hash(filepath: str) -> str:
+def get_file_hash(filepath: str) -> str:
     """Compute SHA256 hash of file for change detection."""
     h = hashlib.sha256()
 
@@ -64,6 +64,13 @@ def file_hash(filepath: str) -> str:
             h.update(chunk)
 
     return h.hexdigest()
+
+
+def get_vendor(filepath):
+
+    return os.path.basename(
+        os.path.dirname(filepath)
+    )
 
 
 def extract_pdf_pages(pdf_path):
@@ -94,96 +101,118 @@ def delete_existing_document(source_name: str):
 # Ingestion
 # --------------------------------------------------
 
-def process_pdf(filename: str):
+def process_pdf(pdf_path):
 
-    path = os.path.join(DOCS_PATH, filename)
+    filename = os.path.basename(pdf_path)
 
-    print(f"\nProcessing: {filename}")
+    source = os.path.relpath(
+        pdf_path,
+        DOCS_PATH
+    )
 
-    current_hash = file_hash(path)
+    vendor = get_vendor(pdf_path)
 
-    # --------------------------------------------------
-    # Check existing metadata (idempotency)
-    # --------------------------------------------------
+    file_hash = get_file_hash(pdf_path)
+
+
+    # Check if document already exists
 
     existing = collection.get(
-        where={"source": filename},
-        include=["metadatas"]
+        where={
+            "source": source
+        },
+        limit=1
     )
 
-    if existing["metadatas"] and len(existing["metadatas"]) > 0:
 
-        stored_hashes = [
-            m.get("file_hash")
-            for m in existing["metadatas"]
-            if m.get("file_hash")
-        ]
+    if existing["metadatas"]:
 
-        if stored_hashes and stored_hashes[0] == current_hash:
-            print("No changes detected — skipping.")
+        old_hash = existing["metadatas"][0].get(
+            "file_hash"
+        )
+
+        if old_hash == file_hash:
+            print(
+                f"Skipping {filename} (unchanged)"
+            )
             return
 
-        print("Changes detected — deleting old chunks.")
-        delete_existing_document(filename)
 
-    # --------------------------------------------------
-    # Extract full document text (IGNORE page boundaries)
-    # --------------------------------------------------
+        print(
+            f"Updating {filename}"
+        )
 
-    pages = extract_pdf_pages(path)
+        collection.delete(
+            where={
+                "source": source
+            }
+        )
 
-    full_text = ""
-    page_map = []  # optional: track page context
 
-    for page in pages:
-        full_text += page["text"] + "\n"
-        page_map.append(page["page"])
-
-    # --------------------------------------------------
-    # Chunk entire document as ONE text stream
-    # --------------------------------------------------
-
-    chunks = splitter.split_text(full_text)
-
-    all_chunks = []
-    all_embeddings = []
-    all_ids = []
-    all_metadata = []
-
-    for i, chunk in enumerate(chunks):
-
-        chunk_id = f"{filename}_c{i}"
-
-        embedding = embedder.encode(chunk).tolist()
-
-        # --------------------------------------------------
-        # Metadata (page becomes approximate, not strict)
-        # --------------------------------------------------
-
-        metadata = {
-            "source": filename,
-            "file_hash": current_hash,
-            "chunk_index": i
-        }
-
-        all_ids.append(chunk_id)
-        all_chunks.append(chunk)
-        all_embeddings.append(embedding)
-        all_metadata.append(metadata)
-
-    # --------------------------------------------------
-    # Insert into Chroma
-    # --------------------------------------------------
-
-    collection.upsert(
-        ids=all_ids,
-        documents=all_chunks,
-        embeddings=all_embeddings,
-        metadatas=all_metadata
+    print(
+        f"Ingesting {filename}"
     )
 
-    print(f"Inserted {len(all_chunks)} chunks")
-    
+
+    pages = extract_pdf_pages(pdf_path)
+
+
+    ids = []
+    documents = []
+    embeddings = []
+    metadatas = []
+
+
+    for page_data in pages:
+
+        page_num = page_data["page"]
+        text = page_data["text"]
+
+
+        chunks = splitter.split_text(text)
+
+
+        for index, chunk in enumerate(chunks):
+
+            chunk_id = (
+                f"{vendor}_{source}"
+                f"_p{page_num}_c{index}"
+            )
+
+
+            ids.append(chunk_id)
+
+            documents.append(chunk)
+
+
+            embeddings.append(
+                embedder.encode(chunk).tolist()
+            )
+
+
+            metadatas.append(
+                {
+                    "vendor": vendor,
+                    "source": source,
+                    "page": page_num,
+                    "chunk": index,
+                    "file_hash": file_hash
+                }
+            )
+
+
+    collection.upsert(
+        ids=ids,
+        documents=documents,
+        embeddings=embeddings,
+        metadatas=metadatas
+    )
+
+
+    print(
+        f"Added {len(ids)} chunks"
+    )
+
 
 # --------------------------------------------------
 # Cleanup removed files
@@ -193,22 +222,47 @@ def cleanup_deleted_files():
 
     print("\nChecking for deleted documents...")
 
-    all_docs = set(os.listdir(DOCS_PATH))
+    current_files = set()
 
-    stored = collection.get(include=["metadatas"])
+    for root, dirs, files in os.walk(DOCS_PATH):
 
-    seen_sources = set()
+        for filename in files:
 
-    for meta in stored["metadatas"]:
-        if meta and "source" in meta:
-            seen_sources.add(meta["source"])
+            if filename.lower().endswith(".pdf"):
 
-    deleted = seen_sources - all_docs
+                current_files.add(
+                    os.path.relpath(
+                        os.path.join(root, filename),
+                        DOCS_PATH
+                    )
+                )
+
+
+    stored = collection.get(
+        include=["metadatas"]
+    )
+
+    stored_files = {
+        meta["source"]
+        for meta in stored["metadatas"]
+        if meta and "source" in meta
+    }
+
+
+    deleted = stored_files - current_files
+
 
     for doc in deleted:
-        print(f"Deleting stale document: {doc}")
 
-        collection.delete(where={"source": doc})
+        print(
+            f"Deleting stale document: {doc}"
+        )
+
+        collection.delete(
+            where={
+                "source": doc
+            }
+        )
 
 
 # --------------------------------------------------
@@ -218,11 +272,19 @@ def cleanup_deleted_files():
 def main():
 
     # Ingest or update documents
-    for file in os.listdir(DOCS_PATH):
+    for root, dirs, files in os.walk(DOCS_PATH):
 
-        if file.lower().endswith(".pdf"):
-            process_pdf(file)
+        for filename in files:
 
+            if filename.lower().endswith(".pdf"):
+
+                filepath = os.path.join(
+                    root,
+                    filename
+                )
+
+                process_pdf(filepath)
+                
     # Remove deleted docs
     cleanup_deleted_files()
 
