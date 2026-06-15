@@ -20,7 +20,7 @@ embedder = SentenceTransformer(
 
 while True:
 
-    question = input("\nQuestion: ")
+    question = input("\nThe network device has given the following error: ")
 
     embedding = embedder.encode(
         question
