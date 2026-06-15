@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOCPilot Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+   <header>
+  <div>
+    <h1>NOCPilot</h1>
+    <p>AI-Powered Network Operations Assistant</p>
+  </div>
+
+  <nav class="navbar">
+    <a href="#dashboard">Dashboard</a>
+    <a href="#alertsSection">Alerts</a>
+    <a href="#aiSection">AI Assistant</a>
+    <a href="#" onclick="logout()">Logout</a>
+  </nav>
+
+  <div class="buttons">
+    <button onclick="resetSystem()">Reset</button>
+    <button onclick="simulateAlert()">Simulate Issue</button>
+  </div>
+</header>
+
+<section id="dashboard" class="summary-cards">
+
+  <div class="summary-card">
+    <h3>Devices Online</h3>
+    <p id="onlineCount">0</p>
+  </div>
+
+  <div class="summary-card">
+    <h3>Devices Offline</h3>
+    <p id="offlineCount">0</p>
+  </div>
+
+  <div class="summary-card">
+    <h3>Active Alerts</h3>
+    <p id="alertCount">0</p>
+  </div>
+
+  <div class="summary-card">
+    <h3>Critical Alerts</h3>
+    <p id="criticalCount">0</p>
+  </div>
+
+</section>
+    <section class="cards">
+      <div class="card">
+        <h2>Network Devices</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>IP</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Latency</th>
+              <th>Packet Loss</th>
+              <th>Tunnel</th>
+            </tr>
+          </thead>
+          <tbody id="deviceTable"></tbody>
+        </table>
+      </div>
+
+      <div id="alertsSection" class="card">
+        <h2>Open Alerts</h2>
+        <div id="alerts">
+          
+      </div>
+
+      <div id="aiSection" class="card">
+        <h2>AI Explanation</h2>
+        <div id="aiBox">
+          <p>Select an alert to view AI troubleshooting guidance.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
