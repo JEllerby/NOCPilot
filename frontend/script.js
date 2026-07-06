@@ -91,29 +91,85 @@ async function explainAlert(alertId) {
   const aiBox = document.getElementById("aiBox");
 
   aiBox.innerHTML = `
-    <h3>${data.alert.device_name}: ${data.alert.alert_type}</h3>
+  <div class="ai-alert-header">
+    <div>
+      <h3>${data.alert.device_name}</h3>
+      <p>${data.alert.alert_type}</p>
+    </div>
+    <span class="severity-badge ${data.alert.severity.toLowerCase()}">
+      ${data.alert.severity}
+    </span>
+  </div>
 
-    <h4>Summary</h4>
-    <p>${data.ai_summary}</p>
+  <div class="ai-grid">
+    <div class="ai-card">
+      <h4>AI Summary</h4>
+      <p>${data.ai_summary}</p>
+    </div>
 
-    <h4>Possible Causes</h4>
-    <ul>
-      ${data.possible_causes.map(item => `<li>${item}</li>`).join("")}
-    </ul>
+    <div class="ai-card">
+      <h4>Possible Causes</h4>
+      <ul>
+        ${data.possible_causes.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>
 
-    <h4>Next Actions</h4>
-    <ul>
-      ${data.next_steps.map(item => `<li>${item}</li>`).join("")}
-    </ul>
+    <div class="ai-card">
+      <h4>Recommended Actions</h4>
+      <ul>
+        ${data.next_steps.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>
 
-    <h4>Ticket Note</h4>
-    <div class="ticket-note">${data.ticket_note}</div>
-  `;
+    <div class="ai-card">
+      <h4>Ticket Note</h4>
+      <div class="ticket-note" id="ticketNote">
+        ${data.ticket_note}
+      </div>
+
+      <button class="copy-btn" onclick="copyTicketNote()">
+        Copy Ticket Note
+      </button>
+
+      <p id="copyMessage" class="copy-message"></p>
+    </div>
+  </div>
+`;
+}
+
+function copyTicketNote() {
+    const ticketNote = document.getElementById("ticketNote");
+    const message = document.getElementById("copyMessage");
+
+    if (!ticketNote) return;
+
+    navigator.clipboard.writeText(ticketNote.textContent)
+        .then(() => {
+            message.textContent = "✓ Ticket note copied successfully";
+            message.style.opacity = "1";
+
+            setTimeout(() => {
+                message.style.opacity = "0";
+            }, 2500);
+        })
+        .catch(() => {
+            message.textContent = "Failed to copy ticket note";
+            message.style.color = "#ef4444";
+            message.style.opacity = "1";
+
+            setTimeout(() => {
+                message.style.opacity = "0";
+                message.style.color = "#22c55e";
+            }, 2500);
+        });
 }
 
 async function resetSystem() {
   await fetch(`${API}/reset`, { method: "POST" });
-  document.getElementById("aiBox").innerHTML = "<p>Select an alert to view AI troubleshooting guidance.</p>";
+
+  document.getElementById("aiBox").innerHTML =
+    "<p>Select an alert to view AI troubleshooting guidance.</p>";
+
   await loadDevices();
   await loadAlerts();
 }

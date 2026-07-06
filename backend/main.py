@@ -97,9 +97,6 @@ def create_alert(device_name, alert_type, severity, description):
     alerts.insert(0, alert)
     return alert
 
-@app.get("/")
-def home():
-    return {"message": "NOCPilot API is running"}
 
 @app.get("/")
 def home():
