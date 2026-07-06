@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+from retrieval import query_docs       # Queries our Chromadb. Use Ex:  query = query_docs(question)
+from llm_contact import generate_explanation
 import random
 
 app = FastAPI(title="NOCPilot API")

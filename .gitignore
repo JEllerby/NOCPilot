@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .env
 .vscode/
-chroma_db/
+**/chroma_db/
 chroma.sqlite3
 *.sqlite3
 TestPrompt.txt

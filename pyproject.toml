@@ -11,6 +11,7 @@ dependencies = [
     "fitz>=0.0.1.dev2",
     "langchain>=1.3.4",
     "langchain-text-splitters>=1.1.2",
+    "openai>=2.44.0",
     "pydantic>=2.13.4",
     "pymupdf>=1.27.2.3",
     "sentence-transformers>=5.5.1",
