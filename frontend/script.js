@@ -1,183 +1,429 @@
+// Protect the dashboard from direct access without logging in.
 if (localStorage.getItem("isLoggedIn") !== "true") {
-  window.location.href = "login.html";
+  window.location.replace("login.html");
 }
 
-const API = "http://127.0.0.1:8000";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
-async function loadDevices() {
-  const response = await fetch(`${API}/devices`);
-  const devices = await response.json();
-const onlineDevices =
-  devices.filter(device => device.status === "UP").length;
+let activeAiRequest = 0;
 
-const offlineDevices =
-  devices.filter(device => device.status !== "UP").length;
 
-document.getElementById("onlineCount").textContent =
-  onlineDevices;
-
-document.getElementById("offlineCount").textContent =
-  offlineDevices;
-  const table = document.getElementById("deviceTable");
-  table.innerHTML = "";
-
-  devices.forEach(device => {
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>${device.name}</td>
-      <td>${device.ip_address}</td>
-      <td>${device.type}</td>
-      <td class="${device.status === "UP" ? "status-up" : "status-down"}">${device.status}</td>
-      <td>${device.latency_ms} ms</td>
-      <td>${device.packet_loss}%</td>
-      <td>${device.tunnel_status}</td>
-    `;
-
-    table.appendChild(row);
-  });
+/**
+ * Escape API-provided text before inserting it into HTML.
+ * This prevents unexpected HTML from being rendered by the browser.
+ */
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-async function loadAlerts() {
-  const response = await fetch(`${API}/alerts`);
-  const alerts = await response.json();
-document.getElementById("alertCount").textContent =
-  alerts.length;
 
-const criticalAlerts =
-  alerts.filter(alert => alert.severity === "CRITICAL").length;
+/**
+ * Request JSON from the backend and throw a readable error
+ * when the backend returns a non-success status.
+ */
+async function fetchJson(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, options);
 
-document.getElementById("criticalCount").textContent =
-  criticalAlerts;
-  const alertBox = document.getElementById("alerts");
-  alertBox.innerHTML = "";
+  let data = null;
 
-  if (alerts.length === 0) {
-    alertBox.innerHTML = "<p>No open alerts. Network is healthy.</p>";
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.detail ||
+      data?.error ||
+      `Backend request failed with status ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+
+function setButtonBusy(button, isBusy, busyText) {
+  if (!button) return;
+
+  if (isBusy) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = busyText;
+    button.disabled = true;
     return;
   }
 
-  alerts.forEach(alert => {
-    const div = document.createElement("div");
-    div.className = "alert-item";
-    div.onclick = () => explainAlert(alert.id);
-
-    div.innerHTML = `
-      <h3>${alert.device_name} - ${alert.alert_type}</h3>
-      <p>${alert.description}</p>
-      <p>Severity: <span class="${alert.severity.toLowerCase()}">${alert.severity}</span></p>
-      <p>Created: ${alert.created_at}</p>
-    `;
-
-    alertBox.appendChild(div);
-  });
+  button.textContent = button.dataset.originalText || button.textContent;
+  button.disabled = false;
 }
+
+
+function renderList(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "<li>No items were returned by the AI model.</li>";
+  }
+
+  return items
+    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+}
+
+
+async function loadDevices() {
+  const table = document.getElementById("deviceTable");
+
+  try {
+    const devices = await fetchJson("/devices");
+
+    const onlineDevices = devices.filter(
+      device => device.status === "UP"
+    ).length;
+
+    const offlineDevices = devices.length - onlineDevices;
+
+    document.getElementById("onlineCount").textContent = onlineDevices;
+    document.getElementById("offlineCount").textContent = offlineDevices;
+
+    table.innerHTML = devices
+      .map(device => {
+        const isOnline = device.status === "UP";
+        const statusClass = isOnline ? "status-up" : "status-down";
+
+        return `
+          <tr>
+            <td>${escapeHtml(device.name)}</td>
+            <td>${escapeHtml(device.ip_address)}</td>
+            <td>${escapeHtml(device.type)}</td>
+            <td class="${statusClass}">
+              ${escapeHtml(device.status)}
+            </td>
+            <td>${escapeHtml(device.latency_ms)} ms</td>
+            <td>${escapeHtml(device.packet_loss)}%</td>
+            <td>${escapeHtml(device.tunnel_status)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    document.getElementById("onlineCount").textContent = "—";
+    document.getElementById("offlineCount").textContent = "—";
+
+    table.innerHTML = `
+      <tr>
+        <td colspan="7" class="error-state">
+          ${escapeHtml(error.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+
+async function loadAlerts() {
+  const alertBox = document.getElementById("alerts");
+
+  try {
+    const alerts = await fetchJson("/alerts");
+
+    const criticalAlerts = alerts.filter(
+      alert => alert.severity === "CRITICAL"
+    ).length;
+
+    document.getElementById("alertCount").textContent = alerts.length;
+    document.getElementById("criticalCount").textContent = criticalAlerts;
+
+    alertBox.innerHTML = "";
+
+    if (alerts.length === 0) {
+      alertBox.innerHTML = `
+        <p class="empty-state">
+          No open alerts. The network is healthy.
+        </p>
+      `;
+      return;
+    }
+
+    alerts.forEach(alert => {
+      const alertButton = document.createElement("button");
+
+      alertButton.type = "button";
+      alertButton.className = "alert-item";
+
+      alertButton.innerHTML = `
+        <h3>
+          ${escapeHtml(alert.device_name)}
+          —
+          ${escapeHtml(alert.alert_type)}
+        </h3>
+
+        <p>${escapeHtml(alert.description)}</p>
+
+        <p>
+          Severity:
+          <span class="${escapeHtml(alert.severity.toLowerCase())}">
+            ${escapeHtml(alert.severity)}
+          </span>
+        </p>
+
+        <p>Created: ${escapeHtml(alert.created_at)}</p>
+      `;
+
+      alertButton.addEventListener(
+        "click",
+        () => explainAlert(alert.id)
+      );
+
+      alertBox.appendChild(alertButton);
+    });
+  } catch (error) {
+    document.getElementById("alertCount").textContent = "—";
+    document.getElementById("criticalCount").textContent = "—";
+
+    alertBox.innerHTML = `
+      <p class="error-state">${escapeHtml(error.message)}</p>
+    `;
+  }
+}
+
 
 async function simulateAlert() {
-  await fetch(`${API}/simulate-alert`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({})
-  });
+  const button = document.getElementById("simulateButton");
 
-  await loadDevices();
-  await loadAlerts();
+  setButtonBusy(button, true, "Simulating...");
+
+  try {
+    await fetchJson("/simulate-alert", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    await Promise.all([
+      loadDevices(),
+      loadAlerts(),
+    ]);
+  } catch (error) {
+    document.getElementById("alerts").innerHTML = `
+      <p class="error-state">${escapeHtml(error.message)}</p>
+    `;
+  } finally {
+    setButtonBusy(button, false);
+  }
 }
+
 
 async function explainAlert(alertId) {
-  const response = await fetch(`${API}/ai-explain/${alertId}`);
-  const data = await response.json();
-
   const aiBox = document.getElementById("aiBox");
 
+  // A slower, older request cannot overwrite a newer alert selection.
+  const requestId = ++activeAiRequest;
+
   aiBox.innerHTML = `
-  <div class="ai-alert-header">
-    <div>
-      <h3>${data.alert.device_name}</h3>
-      <p>${data.alert.alert_type}</p>
-    </div>
-    <span class="severity-badge ${data.alert.severity.toLowerCase()}">
-      ${data.alert.severity}
-    </span>
-  </div>
+    <div class="ai-loading-container">
+      <div class="ai-loader" aria-hidden="true">
+        <div class="ai-loader-ring"></div>
 
-  <div class="ai-grid">
-    <div class="ai-card">
-      <h4>AI Summary</h4>
-      <p>${data.ai_summary}</p>
-    </div>
-
-    <div class="ai-card">
-      <h4>Possible Causes</h4>
-      <ul>
-        ${data.possible_causes.map(item => `<li>${item}</li>`).join("")}
-      </ul>
-    </div>
-
-    <div class="ai-card">
-      <h4>Recommended Actions</h4>
-      <ul>
-        ${data.next_steps.map(item => `<li>${item}</li>`).join("")}
-      </ul>
-    </div>
-
-    <div class="ai-card">
-      <h4>Ticket Note</h4>
-      <div class="ticket-note" id="ticketNote">
-        ${data.ticket_note}
+        <div class="ai-loader-core">
+          <img
+            src="images/nocpilot-icon.png"
+            alt=""
+            class="ai-loader-logo"
+          />
+        </div>
       </div>
 
-      <button class="copy-btn" onclick="copyTicketNote()">
-        Copy Ticket Note
-      </button>
+      <h3>NOCPilot is analyzing the alert</h3>
 
-      <p id="copyMessage" class="copy-message"></p>
+      <p class="ai-loading-text">
+        Retrieving relevant documentation and generating live
+        troubleshooting guidance from the LLM.
+      </p>
+
+      <div class="loading-steps" aria-hidden="true">
+        <span>Searching knowledge base</span>
+        <span>Analyzing network event</span>
+        <span>Preparing recommended actions</span>
+      </div>
     </div>
-  </div>
-`;
+  `;
+
+  try {
+    const data = await fetchJson(`/ai-explain/${alertId}`);
+
+    if (requestId !== activeAiRequest) {
+      return;
+    }
+
+    const alert = data.alert || {};
+
+    aiBox.innerHTML = `
+      <div class="ai-alert-header">
+        <div>
+          <h3>${escapeHtml(alert.device_name)}</h3>
+          <p>${escapeHtml(alert.alert_type)}</p>
+        </div>
+
+        <div class="ai-header-badges">
+          <span class="ai-source-badge">Live AI + RAG</span>
+
+          <span
+            class="severity-badge ${escapeHtml(
+              String(alert.severity || "").toLowerCase()
+            )}"
+          >
+            ${escapeHtml(alert.severity)}
+          </span>
+        </div>
+      </div>
+
+      <div class="ai-grid">
+        <section class="ai-card">
+          <h4>AI Summary</h4>
+          <p>${escapeHtml(data.ai_summary)}</p>
+        </section>
+
+        <section class="ai-card">
+          <h4>Possible Causes</h4>
+          <ul>${renderList(data.possible_causes)}</ul>
+        </section>
+
+        <section class="ai-card">
+          <h4>Recommended Actions</h4>
+          <ul>${renderList(data.next_steps)}</ul>
+        </section>
+
+        <section class="ai-card">
+          <h4>Ticket Note</h4>
+
+          <div class="ticket-note" id="ticketNote">
+            ${escapeHtml(data.ticket_note)}
+          </div>
+
+          <button
+            type="button"
+            class="copy-btn"
+            id="copyTicketButton"
+          >
+            Copy Ticket Note
+          </button>
+
+          <p
+            id="copyMessage"
+            class="copy-message"
+            aria-live="polite"
+          ></p>
+        </section>
+      </div>
+    `;
+
+    document
+      .getElementById("copyTicketButton")
+      .addEventListener("click", copyTicketNote);
+  } catch (error) {
+    if (requestId !== activeAiRequest) {
+      return;
+    }
+
+    aiBox.innerHTML = `
+      <div class="error-state">
+        <strong>AI analysis could not be generated.</strong>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+  }
 }
 
-function copyTicketNote() {
-    const ticketNote = document.getElementById("ticketNote");
-    const message = document.getElementById("copyMessage");
 
-    if (!ticketNote) return;
+async function copyTicketNote() {
+  const ticketNote = document.getElementById("ticketNote");
+  const message = document.getElementById("copyMessage");
 
-    navigator.clipboard.writeText(ticketNote.textContent)
-        .then(() => {
-            message.textContent = "✓ Ticket note copied successfully";
-            message.style.opacity = "1";
+  if (!ticketNote || !message) {
+    return;
+  }
 
-            setTimeout(() => {
-                message.style.opacity = "0";
-            }, 2500);
-        })
-        .catch(() => {
-            message.textContent = "Failed to copy ticket note";
-            message.style.color = "#ef4444";
-            message.style.opacity = "1";
+  try {
+    await navigator.clipboard.writeText(
+      ticketNote.textContent.trim()
+    );
 
-            setTimeout(() => {
-                message.style.opacity = "0";
-                message.style.color = "#22c55e";
-            }, 2500);
-        });
+    message.textContent = "✓ Ticket note copied successfully";
+    message.style.color = "#22c55e";
+    message.style.opacity = "1";
+  } catch {
+    message.textContent = "Unable to copy the ticket note.";
+    message.style.color = "#f87171";
+    message.style.opacity = "1";
+  }
+
+  window.setTimeout(() => {
+    message.style.opacity = "0";
+  }, 2500);
 }
+
 
 async function resetSystem() {
-  await fetch(`${API}/reset`, { method: "POST" });
+  const button = document.getElementById("resetButton");
 
-  document.getElementById("aiBox").innerHTML =
-    "<p>Select an alert to view AI troubleshooting guidance.</p>";
+  setButtonBusy(button, true, "Resetting...");
 
-  await loadDevices();
-  await loadAlerts();
+  try {
+    await fetchJson("/reset", {
+      method: "POST",
+    });
+
+    activeAiRequest += 1;
+
+    document.getElementById("aiBox").innerHTML = `
+      <p class="empty-state">
+        Select an alert to generate AI troubleshooting guidance.
+      </p>
+    `;
+
+    await Promise.all([
+      loadDevices(),
+      loadAlerts(),
+    ]);
+  } catch (error) {
+    document.getElementById("aiBox").innerHTML = `
+      <p class="error-state">${escapeHtml(error.message)}</p>
+    `;
+  } finally {
+    setButtonBusy(button, false);
+  }
 }
+
 
 function logout() {
   localStorage.removeItem("isLoggedIn");
-  window.location.href = "login.html";
 }
 
-loadDevices();
-loadAlerts();
+
+function initializeDashboard() {
+  document
+    .getElementById("simulateButton")
+    .addEventListener("click", simulateAlert);
+
+  document
+    .getElementById("resetButton")
+    .addEventListener("click", resetSystem);
+
+  document
+    .getElementById("logoutLink")
+    .addEventListener("click", logout);
+
+  loadDevices();
+  loadAlerts();
+}
+
+
+document.addEventListener("DOMContentLoaded", initializeDashboard);

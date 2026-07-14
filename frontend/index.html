@@ -3,85 +3,137 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>NOCPilot Dashboard</title>
+
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
 </head>
+
 <body>
   <div class="container">
-   <header>
-  <div>
-    <h1>NOCPilot</h1>
-    <p>AI-Powered Network Operations Assistant</p>
-  </div>
+    <header class="app-header">
+      <a class="brand" href="#dashboard" aria-label="Go to dashboard">
+        <img
+          src="images/nocpilot-icon.png"
+          alt=""
+          class="header-logo"
+        />
 
-  <nav class="navbar">
-    <a href="#dashboard">Dashboard</a>
-    <a href="#alertsSection">Alerts</a>
-    <a href="#aiSection">AI Assistant</a>
-    <a href="#" onclick="logout()">Logout</a>
-  </nav>
-
-  <div class="buttons">
-    <button onclick="resetSystem()">Reset</button>
-    <button onclick="simulateAlert()">Simulate Issue</button>
-  </div>
-</header>
-
-<section id="dashboard" class="summary-cards">
-
-  <div class="summary-card">
-    <h3>Devices Online</h3>
-    <p id="onlineCount">0</p>
-  </div>
-
-  <div class="summary-card">
-    <h3>Devices Offline</h3>
-    <p id="offlineCount">0</p>
-  </div>
-
-  <div class="summary-card">
-    <h3>Active Alerts</h3>
-    <p id="alertCount">0</p>
-  </div>
-
-  <div class="summary-card">
-    <h3>Critical Alerts</h3>
-    <p id="criticalCount">0</p>
-  </div>
-
-</section>
-    <section class="cards">
-      <div class="card">
-        <h2>Network Devices</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>IP</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Latency</th>
-              <th>Packet Loss</th>
-              <th>Tunnel</th>
-            </tr>
-          </thead>
-          <tbody id="deviceTable"></tbody>
-        </table>
-      </div>
-
-      <div id="alertsSection" class="card">
-        <h2>Open Alerts</h2>
-        <div id="alerts">
-          
-      </div>
-
-      <div id="aiSection" class="card">
-        <h2>AI Explanation</h2>
-        <div id="aiBox">
-          <p>Select an alert to view AI troubleshooting guidance.</p>
+        <div class="brand-text">
+          <h1>NOCPilot</h1>
+          <p>AI-Powered Network Operations Assistant</p>
         </div>
+      </a>
+
+      <nav class="navbar" aria-label="Dashboard navigation">
+        <a href="#dashboard">Dashboard</a>
+        <a href="#alertsSection">Alerts</a>
+        <a href="#aiSection">AI Assistant</a>
+        <a href="login.html" id="logoutLink">Logout</a>
+      </nav>
+
+      <div class="header-actions">
+        <button
+          type="button"
+          id="resetButton"
+          class="button button-secondary"
+        >
+          Reset
+        </button>
+
+        <button
+          type="button"
+          id="simulateButton"
+          class="button button-primary"
+        >
+          Simulate Issue
+        </button>
       </div>
-    </section>
+    </header>
+
+    <main>
+      <section
+        id="dashboard"
+        class="summary-cards"
+        aria-label="Network summary"
+      >
+        <article class="summary-card">
+          <h2>Devices Online</h2>
+          <p id="onlineCount">0</p>
+        </article>
+
+        <article class="summary-card">
+          <h2>Devices Offline</h2>
+          <p id="offlineCount">0</p>
+        </article>
+
+        <article class="summary-card">
+          <h2>Active Alerts</h2>
+          <p id="alertCount">0</p>
+        </article>
+
+        <article class="summary-card">
+          <h2>Critical Alerts</h2>
+          <p id="criticalCount">0</p>
+        </article>
+      </section>
+
+      <section class="cards">
+        <article class="card">
+          <div class="section-heading">
+            <div>
+              <p class="section-eyebrow">Monitoring</p>
+              <h2>Network Devices</h2>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">IP</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Latency</th>
+                  <th scope="col">Packet Loss</th>
+                  <th scope="col">Tunnel</th>
+                </tr>
+              </thead>
+
+              <tbody id="deviceTable"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="alertsSection" class="card">
+          <div class="section-heading">
+            <div>
+              <p class="section-eyebrow">Incident queue</p>
+              <h2>Open Alerts</h2>
+            </div>
+          </div>
+
+          <div id="alerts" class="alerts-list"></div>
+        </article>
+
+        <article id="aiSection" class="card">
+          <div class="section-heading">
+            <div>
+              <p class="section-eyebrow">Live AI + RAG</p>
+              <h2>AI Explanation</h2>
+            </div>
+          </div>
+
+          <div id="aiBox" class="ai-box" aria-live="polite">
+            <p class="empty-state">
+              Select an alert to generate AI troubleshooting guidance.
+            </p>
+          </div>
+        </article>
+      </section>
+    </main>
   </div>
 
   <script src="script.js"></script>

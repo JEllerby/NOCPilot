@@ -1,29 +1,217 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOCPilot Login</title>
-    <link rel="stylesheet" href="login.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>NOCPilot Login</title>
+
+  <link rel="stylesheet" href="login.css" />
+  <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
 </head>
+
 <body>
+  <main class="login-page">
 
-<div class="login-container">
-    <h1>NOCPilot</h1>
-    <p>AI-Powered Network Operations Assistant</p>
+    <!-- Animated network activity layered over Background.png -->
+<div class="network-effects" aria-hidden="true">
 
-    <form id="loginForm">
-        <input type="text" id="username" placeholder="Username" required>
+  <!-- Glowing network hubs -->
+  <span class="pulse-dot dot-1"></span>
+  <span class="pulse-dot dot-2"></span>
+  <span class="pulse-dot dot-3"></span>
+  <span class="pulse-dot dot-4"></span>
+  <span class="pulse-dot dot-5"></span>
+  <span class="pulse-dot dot-6"></span>
+  <span class="pulse-dot dot-7"></span>
+  <span class="pulse-dot dot-8"></span>
+  <span class="pulse-dot dot-9"></span>
+  <span class="pulse-dot dot-10"></span>
 
-        <input type="password" id="password" placeholder="Password" required>
+  <!-- Moving data packets -->
+  <svg
+    class="packet-overlay"
+    viewBox="0 0 1648 928"
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <defs>
+      <!-- Glow applied to moving packets -->
+      <filter id="packetGlow" x="-300%" y="-300%" width="600%" height="600%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
 
-        <button type="submit">Login</button>
-    </form>
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
 
-    <p id="error"></p>
+      <!-- Subtle glow for the animated routes -->
+      <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0" />
+        <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.35" />
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+      </linearGradient>
+
+      <!-- Packet path from North America toward Europe -->
+      <path
+        id="packetPathOne"
+        d="M 30 370
+           C 180 190, 390 210, 580 475
+           C 680 610, 760 570, 825 470"
+      />
+
+      <!-- Packet path from Europe toward Asia -->
+      <path
+        id="packetPathTwo"
+        d="M 825 470
+           C 970 270, 1190 260, 1475 490
+           C 1540 540, 1590 440, 1635 345"
+      />
+
+      <!-- Lower route across the map -->
+      <path
+        id="packetPathThree"
+        d="M 160 590
+           C 360 420, 520 520, 710 640
+           C 900 750, 1110 610, 1485 520"
+      />
+
+      <!-- Upper global route -->
+      <path
+        id="packetPathFour"
+        d="M 100 300
+           C 360 180, 520 360, 760 420
+           C 1040 480, 1240 130, 1570 360"
+      />
+    </defs>
+
+    <!-- Optional faint animated route highlights -->
+    <use href="#packetPathOne" class="packet-route" />
+    <use href="#packetPathTwo" class="packet-route" />
+    <use href="#packetPathThree" class="packet-route" />
+    <use href="#packetPathFour" class="packet-route" />
+
+    <!-- Packet 1 -->
+    <circle class="data-packet packet-blue" r="5">
+      <animateMotion
+        dur="7s"
+        repeatCount="indefinite"
+        begin="0s"
+      >
+        <mpath href="#packetPathOne" />
+      </animateMotion>
+    </circle>
+
+    <!-- Packet 2 -->
+    <circle class="data-packet packet-cyan" r="4">
+      <animateMotion
+        dur="8.5s"
+        repeatCount="indefinite"
+        begin="-3s"
+      >
+        <mpath href="#packetPathTwo" />
+      </animateMotion>
+    </circle>
+
+    <!-- Packet 3 -->
+    <circle class="data-packet packet-blue" r="5">
+      <animateMotion
+        dur="10s"
+        repeatCount="indefinite"
+        begin="-5s"
+      >
+        <mpath href="#packetPathThree" />
+      </animateMotion>
+    </circle>
+
+    <!-- Packet 4 -->
+    <circle class="data-packet packet-cyan" r="4">
+      <animateMotion
+        dur="11s"
+        repeatCount="indefinite"
+        begin="-7s"
+      >
+        <mpath href="#packetPathFour" />
+      </animateMotion>
+    </circle>
+
+    <!-- Second packet following the first route -->
+    <circle class="data-packet packet-small" r="3">
+      <animateMotion
+        dur="7s"
+        repeatCount="indefinite"
+        begin="-3.5s"
+      >
+        <mpath href="#packetPathOne" />
+      </animateMotion>
+    </circle>
+  </svg>
 </div>
 
-<script src="login.js"></script>
+    <!-- Main login card -->
+    <section class="login-card" aria-labelledby="loginSubtitle">
 
+      <!-- Full NOCPilot logo -->
+      <img
+        src="images/nocpilot-full.png"
+        alt="NOCPilot"
+        class="login-logo-full"
+      />
+
+      <p id="loginSubtitle" class="login-subtitle">
+        AI-Powered Network Operations Assistant
+      </p>
+
+      <!-- Login form -->
+      <form id="loginForm" class="login-form">
+
+        <label class="sr-only" for="username">
+          Username
+        </label>
+
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Username"
+          autocomplete="username"
+          required
+        />
+
+        <label class="sr-only" for="password">
+          Password
+        </label>
+
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+        />
+
+        <button type="submit">
+          Sign In
+        </button>
+
+        <!-- Login error message -->
+        <p
+          id="error"
+          class="error-message"
+          role="alert"
+          aria-live="polite"
+        ></p>
+
+      </form>
+
+      <p class="login-footer">
+        SAIT Capstone Project · 2026
+      </p>
+
+    </section>
+  </main>
+
+  <script src="login.js"></script>
 </body>
 </html>
