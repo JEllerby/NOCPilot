@@ -1,7 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-CHROMA_PATH = "./chroma_db"
+CHROMA_PATH = "./backend/chroma_db"
 COLLECTION_NAME = "network_docs"
 EMBED_MODEL = "BAAI/bge-base-en-v1.5"
 
