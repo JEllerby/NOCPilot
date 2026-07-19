@@ -1,0 +1,124 @@
+{
+    "SW1": {
+        "Interface Description": [
+            {
+                "interface": "Gi0/0",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/1",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/2",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/3",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi1/0",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi1/1",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi1/2",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi1/3",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Vl10",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            }
+        ],
+        "Device Uptime": {
+            "hostname": "SW1",
+            "uptime": "17 minutes"
+        },
+        "System Version": {
+            "version": "15.2(20200924:215240)",
+            "full_output": "Cisco IOS Software, vios_l2 Software (vios_l2-ADVENTERPRISEK9-M), Experimental Version 15.2(20200924:215240) [sweickge-sep24-2020-l2iol-release 135]"
+        },
+        "Run": "Building configuration...\n\nCurrent configuration : 3361 bytes\n!\n! Last configuration change at 20:26:13 UTC Sun Jul 19 2026\n!\nversion 15.2\nservice timestamps debug datetime msec\nservice timestamps log datetime msec\nno service password-encryption\nservice compress-config\n!\nhostname SW1\n!\nboot-start-marker\nboot-end-marker\n!\n!\nenable secret 5 $1$9Atk$COd6QMM/EWOD3U3Rw2pE00\n!\nusername admin secret 5 $1$nWBA$soZqI/dzs2QuSC2ucoNyX0\nno aaa new-model\n!\n!\n!\n!\n!\nno ip routing\n!\n!\n!\nip domain-name nocpilot.com\nno ip cef\nno ipv6 cef\n!\n!\n!\nspanning-tree mode pvst\nspanning-tree extend system-id\n!\n!\n! \n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\ninterface GigabitEthernet0/0\n switchport trunk allowed vlan 10,20\n switchport trunk encapsulation dot1q\n switchport mode trunk\n negotiation auto\n!\ninterface GigabitEthernet0/1\n negotiation auto\n!\ninterface GigabitEthernet0/2\n negotiation auto\n!\ninterface GigabitEthernet0/3\n negotiation auto\n!\ninterface GigabitEthernet1/0\n switchport access vlan 20\n switchport mode access\n negotiation auto\n!\ninterface GigabitEthernet1/1\n switchport access vlan 10\n switchport mode access\n negotiation auto\n!\ninterface GigabitEthernet1/2\n negotiation auto\n!\ninterface GigabitEthernet1/3\n negotiation auto\n!\ninterface Vlan10\n ip address 10.0.10.99 255.255.255.0\n no ip route-cache\n!\nip default-gateway 10.0.10.1\nip forward-protocol nd\n!\nip http server\nip http secure-server\n!\nip ssh version 2\nip ssh server algorithm encryption aes128-ctr aes192-ctr aes256-ctr\nip ssh client algorithm encryption aes128-ctr aes192-ctr aes256-ctr\n!\n!\n!\n!\n!\n!\ncontrol-plane\n!\nbanner exec ^C\nIOSv - Cisco Systems Confidential -\n\nSupplemental End User License Restrictions\n\nThis IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.\n\nBy using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.\n^C\nbanner incoming ^C\nIOSv - Cisco Systems Confidential -\n\nSupplemental End User License Restrictions\n\nThis IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.\n\nBy using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.\n^C\nbanner login ^C\nIOSv - Cisco Systems Confidential -\n\nSupplemental End User License Restrictions\n\nThis IOSv software is provided AS-IS without warranty of any kind. Under no circumstances may this software be used separate from the Cisco Modeling Labs Software that this software was provided with, or deployed or used as part of a production environment.\n\nBy using the software, you agree to abide by the terms and conditions of the Cisco End User License Agreement at http://www.cisco.com/go/eula. Unauthorized use or distribution of this software is expressly prohibited.\n^C\n!\nline con 0\nline aux 0\nline vty 0 4\n login local\n transport input ssh\nline vty 5 15\n login local\n transport input ssh\n!\n!\nend\n"
+    },
+    "RT1": {
+        "Interface Description": [
+            {
+                "interface": "Gi0/0",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/0.10",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/0.20",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/1",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/2",
+                "status": "admin down",
+                "protocol": "down",
+                "description": ""
+            },
+            {
+                "interface": "Gi0/3",
+                "status": "admin down",
+                "protocol": "down",
+                "description": ""
+            },
+            {
+                "interface": "NV0",
+                "status": "up",
+                "protocol": "up",
+                "description": ""
+            }
+        ],
+        "Device Uptime": {
+            "hostname": "RT1",
+            "uptime": "17 minutes"
+        },
+        "System Version": {
+            "version": "15.9(3)M6",
+            "full_output": "Cisco IOS Software, IOSv Software (VIOS-ADVENTERPRISEK9-M), Version 15.9(3)M6, RELEASE SOFTWARE (fc1)"
+        },
+        "Run": "Building configuration...\n\n  \nCurrent configuration : 3609 bytes\n!\nversion 15.9\nservice timestamps debug datetime msec\nservice timestamps log datetime msec\nno service password-encryption\n!\nhostname RT1\n!\nboot-start-marker\nboot-end-marker\n!\n!\nenable secret 9 $9$4xFDJLsyr93x.9$YrHs4SpzRgkEHp3Kook0GzPd2wDqev5O/4SBDLyWPpU\n!\nno aaa new-model\n!\n!\n!\nmmi polling-interval 60\nno mmi auto-configure\nno mmi pvc\nmmi snmp-timeout 180\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\nip domain name nocpilot.com\nip cef\nno ipv6 cef\n!\nmultilink bundle-name authenticated\n!\n!\n!\n!\nusername admin secret 9 $9$vMu9EHBnLNQmhP$8QVKU.egzfNiatnlugcOOHaUxjF43qLZ7t1kWUdGIe2\n!\nredundancy\n!\n!\n! \n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\n!\ninterface GigabitEthernet0/0\n no ip address\n ip nat inside\n ip virtual-reassembly in\n duplex auto\n speed auto\n media-type rj45\n!\ninterface GigabitEthernet0/0.10\n encapsulation dot1Q 10\n ip address 10.0.10.1 255.255.255.0\n ip nat inside\n ip virtual-reassembly in\n!\ninterface GigabitEthernet0/0.20\n encapsulation dot1Q 20\n ip address 10.0.20.1 255.255.255.0\n ip nat inside\n ip virtual-reassembly in\n!\ninterface GigabitEthernet0/1\n ip address dhcp\n ip nat outside\n ip virtual-reassembly in\n duplex auto\n speed auto\n media-type rj45\n!\ninterface GigabitEthernet0/2\n no ip address\n shutdown\n duplex auto\n speed auto\n media-type rj45\n!\ninterface GigabitEthernet0/3\n no ip address\n shutdown\n duplex auto\n speed auto\n media-type rj45\n!\nip forward-protocol nd\n!\n!\nno ip http server\nno ip http secure-server\nip nat inside source list 1 interface GigabitEthernet0/1 overload\nip ssh version 2\n!\nipv6 ioam timestamp\n!\n!\naccess-list 1 permit 10.0.10.0 0.0.0.255\naccess-list 1 permit 10.0.20.0 0.0.0.255\n!\ncontrol-plane\n!\nbanner exec ^C\n**************************************************************************\n* IOSv is strictly limited to use for evaluation, demonstration and IOS  *\n* education. IOSv is provided as-is and is not supported by Cisco's      *\n* Technical Advisory Center. Any use or disclosure, in whole or in part, *\n* of the IOSv Software or Documentation to any third party for any       *\n* purposes is expressly prohibited except as otherwise authorized by     *\n* Cisco in writing.                                                      *\n**************************************************************************^C\nbanner incoming ^C\n**************************************************************************\n* IOSv is strictly limited to use for evaluation, demonstration and IOS  *\n* education. IOSv is provided as-is and is not supported by Cisco's      *\n* Technical Advisory Center. Any use or disclosure, in whole or in part, *\n* of the IOSv Software or Documentation to any third party for any       *\n* purposes is expressly prohibited except as otherwise authorized by     *\n* Cisco in writing.                                                      *\n**************************************************************************^C\nbanner login ^C\n**************************************************************************\n* IOSv is strictly limited to use for evaluation, demonstration and IOS  *\n* education. IOSv is provided as-is and is not supported by Cisco's      *\n* Technical Advisory Center. Any use or disclosure, in whole or in part, *\n* of the IOSv Software or Documentation to any third party for any       *\n* purposes is expressly prohibited except as otherwise authorized by     *\n* Cisco in writing.                                                      *\n**************************************************************************^C\n!\nline con 0\nline aux 0\nline vty 0 4\n login local\n transport input ssh\nline vty 5 15\n login local\n transport input ssh\n!\nno scheduler allocate\n!\nend\n"
+    }
+}
