@@ -16,5 +16,6 @@ dependencies = [
     "paramiko==3.5.1",
     "pydantic>=2.13.4",
     "pymupdf>=1.27.2.3",
+    "pysnmp>=7.1.27",
     "sentence-transformers>=5.5.1",
 ]

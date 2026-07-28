@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -53,6 +52,7 @@
     </header>
 
     <main>
+
       <section
         id="dashboard"
         class="summary-cards"
@@ -80,6 +80,8 @@
       </section>
 
       <section class="cards">
+
+        <!-- Devices -->
         <article class="card">
           <div class="section-heading">
             <div>
@@ -92,13 +94,15 @@
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">IP</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Latency</th>
-                  <th scope="col">Packet Loss</th>
-                  <th scope="col">Tunnel</th>
+                  <th>Name</th>
+                  <th>IP Address</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>CPU</th>
+                  <th>Uptime</th>
+                  <th>Interfaces Up</th>
+                  <th>Interfaces Down</th>
+                  <th>Packet Loss</th>
                 </tr>
               </thead>
 
@@ -107,35 +111,100 @@
           </div>
         </article>
 
+        <!-- NEW INTERFACE CARD -->
+        <article id="interfacesSection" class="card" hidden>
+
+          <div class="section-heading">
+
+            <div>
+              <p class="section-eyebrow">
+                Device Drill Down
+              </p>
+
+              <h2 id="interfaceDeviceName">
+                Device Interfaces
+              </h2>
+
+              <p id="interfaceDeviceMeta"></p>
+
+            </div>
+
+            <button
+              id="closeInterfacesButton"
+              class="button button-secondary"
+            >
+              Close
+            </button>
+
+          </div>
+
+          <div id="interfaceContent">
+
+            <p class="empty-state">
+              Click on a device to view its interfaces.
+            </p>
+
+          </div>
+
+        </article>
+
+        <!-- Alerts -->
         <article id="alertsSection" class="card">
           <div class="section-heading">
             <div>
-              <p class="section-eyebrow">Incident queue</p>
+              <p class="section-eyebrow">
+                Incident queue
+              </p>
+
               <h2>Open Alerts</h2>
             </div>
           </div>
 
           <div id="alerts" class="alerts-list"></div>
+
         </article>
 
+        <!-- AI -->
         <article id="aiSection" class="card">
+
           <div class="section-heading">
+
             <div>
-              <p class="section-eyebrow">Live AI + RAG</p>
-              <h2>AI Explanation</h2>
+
+              <p class="section-eyebrow">
+                Live AI + RAG
+              </p>
+
+              <h2>
+                AI Explanation
+              </h2>
+
             </div>
+
           </div>
 
-          <div id="aiBox" class="ai-box" aria-live="polite">
+          <div
+            id="aiBox"
+            class="ai-box"
+            aria-live="polite"
+          >
+
             <p class="empty-state">
               Select an alert to generate AI troubleshooting guidance.
             </p>
+
           </div>
+
         </article>
+
       </section>
+
     </main>
+
   </div>
 
   <script src="script.js"></script>
+
 </body>
+
 </html>

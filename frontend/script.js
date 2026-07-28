@@ -7,6 +7,7 @@ const API_BASE_URL =
   `${window.location.protocol}//${window.location.hostname}:8000`;
 
 let activeAiRequest = 0;
+let selectedDeviceId = null;
 
 
 /**
@@ -98,30 +99,241 @@ async function loadDevices() {
         const statusClass = isOnline ? "status-up" : "status-down";
 
         return `
-          <tr>
-            <td>${escapeHtml(device.name)}</td>
-            <td>${escapeHtml(device.ip_address)}</td>
-            <td>${escapeHtml(device.type)}</td>
-            <td class="${statusClass}">
-              ${escapeHtml(device.status)}
-            </td>
-            <td>${escapeHtml(device.latency_ms)} ms</td>
-            <td>${escapeHtml(device.packet_loss)}%</td>
-            <td>${escapeHtml(device.tunnel_status)}</td>
-          </tr>
-        `;
+<tr
+  class="device-row"
+  data-device-id="${escapeHtml(device.id)}"
+  data-device-name="${escapeHtml(device.name)}"
+  data-device-ip="${escapeHtml(device.ip_address)}"
+  tabindex="0"
+  role="button"
+  aria-label="View interfaces for ${escapeHtml(device.name)}"
+>
+    <td>
+      <span class="device-name-link">${escapeHtml(device.name)}</span>
+    </td>
+
+    <td>${escapeHtml(device.ip_address)}</td>
+
+    <td>${escapeHtml(device.type)}</td>
+
+    <td class="${statusClass}">
+        ${escapeHtml(device.status)}
+    </td>
+
+    <td>${escapeHtml(device.cpu_usage ?? "N/A")} %</td>
+
+    <td>${escapeHtml(device.uptime)}</td>
+
+    <td>
+        ${escapeHtml(device.interfaces_up)}
+        /
+        ${escapeHtml(device.interface_count)}
+    </td>
+
+    <td>${escapeHtml(device.interfaces_down)}</td>
+
+    <td>${escapeHtml(device.packet_loss)}%</td>
+</tr>
+`;
       })
       .join("");
+
+    table.querySelectorAll(".device-row").forEach(row => {
+      const openSelectedDevice = () => {
+        loadDeviceInterfaces(
+          Number(row.dataset.deviceId),
+          row.dataset.deviceName,
+          row.dataset.deviceIp
+        );
+      };
+
+      row.addEventListener("click", openSelectedDevice);
+
+      row.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openSelectedDevice();
+        }
+      });
+    });
   } catch (error) {
     document.getElementById("onlineCount").textContent = "—";
     document.getElementById("offlineCount").textContent = "—";
 
     table.innerHTML = `
       <tr>
-        <td colspan="7" class="error-state">
+        <td colspan="9" class="error-state">
           ${escapeHtml(error.message)}
         </td>
       </tr>
+    `;
+  }
+}
+
+
+function closeInterfaces() {
+  const section = document.getElementById("interfacesSection");
+
+  selectedDeviceId = null;
+  section.hidden = true;
+
+  document.querySelectorAll(".device-row").forEach(row => {
+    row.classList.remove("device-row-selected");
+  });
+}
+
+
+async function loadDeviceInterfaces(deviceId, deviceName, ipAddress) {
+  const section = document.getElementById("interfacesSection");
+  const heading = document.getElementById("interfaceDeviceName");
+  const meta = document.getElementById("interfaceDeviceMeta");
+  const content = document.getElementById("interfaceContent");
+
+  selectedDeviceId = deviceId;
+
+  document.querySelectorAll(".device-row").forEach(row => {
+    row.classList.toggle(
+      "device-row-selected",
+      Number(row.dataset.deviceId) === deviceId
+    );
+  });
+
+  section.hidden = false;
+  heading.textContent = `${deviceName} Interfaces`;
+  meta.textContent = `${ipAddress} • Live SNMP interface status`;
+
+  content.innerHTML = `
+    <div class="interface-loading">
+      <div class="interface-spinner" aria-hidden="true"></div>
+      <p>Loading live interface data...</p>
+    </div>
+  `;
+
+  section.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+
+  try {
+    const interfaces = await fetchJson(
+      `/devices/${deviceId}/interfaces`
+    );
+
+    if (selectedDeviceId !== deviceId) {
+      return;
+    }
+
+    if (!Array.isArray(interfaces) || interfaces.length === 0) {
+      content.innerHTML = `
+        <p class="empty-state">
+          No interface information was returned for this device.
+        </p>
+      `;
+      return;
+    }
+
+    const interfacesUp = interfaces.filter(
+      networkInterface => networkInterface.oper_status === "UP"
+    ).length;
+
+    const interfacesDown = interfaces.length - interfacesUp;
+
+    content.innerHTML = `
+      <div class="interface-summary">
+        <span>
+          Total
+          <strong>${escapeHtml(interfaces.length)}</strong>
+        </span>
+
+        <span class="interface-summary-up">
+          Up
+          <strong>${escapeHtml(interfacesUp)}</strong>
+        </span>
+
+        <span class="interface-summary-down">
+          Down
+          <strong>${escapeHtml(interfacesDown)}</strong>
+        </span>
+      </div>
+
+      <div class="table-wrapper interface-table-wrapper">
+        <table class="interface-table">
+          <thead>
+            <tr>
+              <th scope="col">Index</th>
+              <th scope="col">Interface</th>
+              <th scope="col">Description</th>
+              <th scope="col">Admin Status</th>
+              <th scope="col">Operational Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${interfaces
+              .map(networkInterface => {
+                const adminUp =
+                  networkInterface.admin_status === "UP";
+                const operUp =
+                  networkInterface.oper_status === "UP";
+
+                return `
+                  <tr>
+                    <td>${escapeHtml(networkInterface.index)}</td>
+
+                    <td>
+                      <span class="interface-name">
+                        <span
+                          class="interface-dot ${
+                            operUp
+                              ? "interface-dot-up"
+                              : "interface-dot-down"
+                          }"
+                          aria-hidden="true"
+                        ></span>
+
+                        ${escapeHtml(networkInterface.name)}
+                      </span>
+                    </td>
+
+                    <td>${escapeHtml(networkInterface.description)}</td>
+
+                    <td>
+                      <span class="interface-status ${
+                        adminUp
+                          ? "interface-status-up"
+                          : "interface-status-down"
+                      }">
+                        ${escapeHtml(networkInterface.admin_status)}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span class="interface-status ${
+                        operUp
+                          ? "interface-status-up"
+                          : "interface-status-down"
+                      }">
+                        ${escapeHtml(networkInterface.oper_status)}
+                      </span>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    if (selectedDeviceId !== deviceId) {
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="error-state">
+        <strong>Interface data could not be loaded.</strong>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
     `;
   }
 }
@@ -421,6 +633,10 @@ function initializeDashboard() {
   document
     .getElementById("logoutLink")
     .addEventListener("click", logout);
+
+  document
+    .getElementById("closeInterfacesButton")
+    .addEventListener("click", closeInterfaces);
 
   loadDevices();
   loadAlerts();

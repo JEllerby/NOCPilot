@@ -19,7 +19,11 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
+from backend.monitoring.snmp import (
+    collect_all_devices,
+    collect_device_interfaces,
+)
+from backend.monitoring.syslog import start_syslog_listener
 
 # ---------------------------------------------------------------------------
 # Application configuration
@@ -148,6 +152,11 @@ def create_alert(
 
     alerts.insert(0, alert)
     return alert
+@app.on_event("startup")
+def start_monitoring_services() -> None:
+    """Start background network-monitoring services."""
+
+    start_syslog_listener(create_alert)
 
 
 # ---------------------------------------------------------------------------
@@ -356,8 +365,10 @@ def health_check() -> dict[str, str]:
 
 
 @app.get("/summary")
-def get_summary() -> dict[str, int]:
-    """Calculate the counts used by the dashboard summary cards."""
+async def get_summary() -> dict[str, int]:
+    """Calculate dashboard counts using live SNMP device data."""
+
+    live_devices = await collect_all_devices()
 
     open_alerts = [
         alert
@@ -366,14 +377,14 @@ def get_summary() -> dict[str, int]:
     ]
 
     return {
-        "total_devices": len(devices),
+        "total_devices": len(live_devices),
         "online_devices": sum(
             device["status"] == "UP"
-            for device in devices
+            for device in live_devices
         ),
         "offline_devices": sum(
             device["status"] != "UP"
-            for device in devices
+            for device in live_devices
         ),
         "active_alerts": len(open_alerts),
         "critical_alerts": sum(
@@ -384,10 +395,27 @@ def get_summary() -> dict[str, int]:
 
 
 @app.get("/devices")
-def get_devices() -> list[dict[str, Any]]:
-    """Return the current device inventory."""
+async def get_devices() -> list[dict[str, Any]]:
+    """Return the current live device inventory."""
 
-    return devices
+    return await collect_all_devices()
+
+
+@app.get("/devices/{device_id}/interfaces")
+async def get_device_interfaces(
+    device_id: int,
+) -> list[dict[str, Any]]:
+    """Return live SNMP interface details for one configured device."""
+
+    interfaces = await collect_device_interfaces(device_id)
+
+    if interfaces is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found.",
+        )
+
+    return interfaces
 
 
 @app.get("/alerts")
