@@ -4,87 +4,244 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>NOCPilot Dashboard</title>
+  <title>NOCPilot</title>
 
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
 </head>
 
 <body>
+  <!-- Decorative background layers -->
+  <div class="background-effects" aria-hidden="true">
+    <div class="aurora aurora-one"></div>
+    <div class="aurora aurora-two"></div>
+    <div class="cyber-grid"></div>
+    <div class="scan-line"></div>
+  </div>
+
   <div class="container">
     <header class="app-header">
       <a class="brand" href="#dashboard" aria-label="Go to dashboard">
-        <img
-          src="images/nocpilot-icon.png"
-          alt=""
-          class="header-logo"
-        />
+        <span class="brand-logo-shell" aria-hidden="true">
+          <span class="brand-logo-orbit"></span>
+          <img
+            src="images/nocpilot-icon.png"
+            alt=""
+            class="header-logo"
+          />
+        </span>
 
-        <div class="brand-text">
-          <h1>NOCPilot</h1>
-          <p>AI-Powered Network Operations Assistant</p>
-        </div>
+        <span class="brand-text">
+          <span class="brand-name">NOCPilot</span>
+          <span class="brand-subtitle">
+            AI-Powered Network Operations Assistant
+          </span>
+        </span>
       </a>
 
       <nav class="navbar" aria-label="Dashboard navigation">
-        <a href="#dashboard">Dashboard</a>
+        <a href="#dashboard">Overview</a>
+        <a href="#devicesSection">Devices</a>
         <a href="#alertsSection">Alerts</a>
         <a href="#aiSection">AI Assistant</a>
-        <a href="login.html" id="logoutLink">Logout</a>
       </nav>
 
-      <div class="header-actions">
-        <button
-          type="button"
-          id="resetButton"
-          class="button button-secondary"
-        >
-          Reset
-        </button>
+      <div class="header-right">
+        <div class="live-status" id="liveStatus">
+          <span class="live-status-pulse" id="systemStatusDot"></span>
 
-        <button
-          type="button"
-          id="simulateButton"
-          class="button button-primary"
-        >
-          Simulate Issue
-        </button>
+          <span>
+            <strong id="systemStatusText">Connecting</strong>
+            <small id="headerClock">--:--:--</small>
+          </span>
+        </div>
+
+        <a class="logout-link" href="login.html" id="logoutLink">
+          <span>Logout</span>
+
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M10 17l5-5-5-5M15 12H3m9-9h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"
+            />
+          </svg>
+        </a>
       </div>
     </header>
 
     <main>
-      <section
-        id="dashboard"
-        class="summary-cards"
-        aria-label="Network summary"
-      >
-        <article class="summary-card">
-          <h2>Devices Online</h2>
-          <p id="onlineCount">0</p>
+      <section id="dashboard" class="command-hero">
+        <div class="hero-copy">
+          <p class="hero-eyebrow">
+            <span></span>
+            LIVE NETWORK INTELLIGENCE
+          </p>
+
+          <h1>
+            Network Operations
+            <span> Center</span>
+          </h1>
+
+          <p class="hero-description">
+            Real-time infrastructure visibility, intelligent incident
+            detection, and AI-assisted troubleshooting in one unified
+            operations console.
+          </p>
+
+          <div class="hero-status-row">
+            <div class="hero-status-item">
+              <span class="hero-status-icon live"></span>
+
+              <span>
+                <small>Platform</small>
+                <strong id="platformStatus">Initializing</strong>
+              </span>
+            </div>
+
+            <div class="hero-status-item">
+              <span class="hero-status-icon collector"></span>
+
+              <span>
+                <small>Collector</small>
+                <strong id="collectorStatus">Checking</strong>
+              </span>
+            </div>
+
+            <div class="hero-status-item">
+              <span class="hero-status-icon sync"></span>
+
+              <span>
+                <small>Last collection</small>
+                <strong id="lastCollection">Waiting for data</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="radar">
+            <div class="radar-ring radar-ring-one"></div>
+            <div class="radar-ring radar-ring-two"></div>
+            <div class="radar-ring radar-ring-three"></div>
+            <div class="radar-crosshair"></div>
+            <div class="radar-sweep"></div>
+
+            <div class="radar-center">
+              <img src="images/nocpilot-icon.png" alt="" />
+            </div>
+
+            <span class="radar-node node-one"></span>
+            <span class="radar-node node-two"></span>
+            <span class="radar-node node-three"></span>
+            <span class="radar-node node-four"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="summary-cards" aria-label="Network summary">
+        <article class="summary-card summary-online">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20h.01M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 14 0M2 9.5a14.5 14.5 0 0 1 20 0" />
+            </svg>
+          </div>
+
+          <div class="summary-content">
+            <p>Devices Online</p>
+            <strong id="onlineCount">0</strong>
+            <span>
+              <i></i>
+              Operational
+            </span>
+          </div>
+
+          <div class="summary-glow"></div>
         </article>
 
-        <article class="summary-card">
-          <h2>Devices Offline</h2>
-          <p id="offlineCount">0</p>
+        <article class="summary-card summary-offline">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 18H6a4 4 0 0 1-.6-7.95A7 7 0 0 1 18.8 8.6 4.8 4.8 0 0 1 18 18ZM9 9l6 6m0-6-6 6" />
+            </svg>
+          </div>
+
+          <div class="summary-content">
+            <p>Devices Offline</p>
+            <strong id="offlineCount">0</strong>
+            <span>
+              <i></i>
+              Unreachable
+            </span>
+          </div>
+
+          <div class="summary-glow"></div>
         </article>
 
-        <article class="summary-card">
-          <h2>Active Alerts</h2>
-          <p id="alertCount">0</p>
+        <article class="summary-card summary-alerts">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 9v4m0 4h.01M10.3 3.8 2.4 18a2 2 0 0 0 1.75 3h15.7a2 2 0 0 0 1.75-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+            </svg>
+          </div>
+
+          <div class="summary-content">
+            <p>Active Alerts</p>
+            <strong id="alertCount">0</strong>
+            <span>
+              <i></i>
+              Requires review
+            </span>
+          </div>
+
+          <div class="summary-glow"></div>
         </article>
 
-        <article class="summary-card">
-          <h2>Critical Alerts</h2>
-          <p id="criticalCount">0</p>
+        <article class="summary-card summary-critical">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 4 6v5c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-3Zm0 5v4m0 4h.01" />
+            </svg>
+          </div>
+
+          <div class="summary-content">
+            <p>Critical Alerts</p>
+            <strong id="criticalCount">0</strong>
+            <span>
+              <i></i>
+              Immediate attention
+            </span>
+          </div>
+
+          <div class="summary-glow"></div>
         </article>
       </section>
 
-      <section class="cards">
-        <article class="card">
+      <section class="operations-layout">
+        <article id="devicesSection" class="panel devices-panel">
+          <div class="panel-border-animation" aria-hidden="true"></div>
+
           <div class="section-heading">
-            <div>
-              <p class="section-eyebrow">Monitoring</p>
-              <h2>Network Devices</h2>
+            <div class="section-title-group">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="18" height="6" rx="2" />
+                  <rect x="3" y="14" width="18" height="6" rx="2" />
+                  <path d="M7 7h.01M7 17h.01M11 7h6M11 17h6" />
+                </svg>
+              </span>
+
+              <div>
+                <p class="section-eyebrow">Infrastructure Matrix</p>
+                <h2>Network Devices</h2>
+              </div>
+            </div>
+
+            <div class="panel-telemetry">
+              <span>
+                <i class="telemetry-dot"></i>
+                Live feed
+              </span>
+
+              <small id="deviceLastUpdated">Awaiting collection</small>
             </div>
           </div>
 
@@ -92,48 +249,168 @@
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">IP</th>
+                  <th scope="col">Device</th>
+                  <th scope="col">Management IP</th>
                   <th scope="col">Type</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Latency</th>
-                  <th scope="col">Packet Loss</th>
-                  <th scope="col">Tunnel</th>
+                  <th scope="col">Operational Status</th>
+                  <th scope="col">Health</th>
+                  <th scope="col">Uptime</th>
+                  <th scope="col">Interfaces</th>
+                  <th scope="col">Software</th>
                 </tr>
               </thead>
 
-              <tbody id="deviceTable"></tbody>
+              <tbody id="deviceTable">
+                <tr>
+                  <td colspan="8">
+                    <div class="table-loading">
+                      <span></span>
+                      Loading live infrastructure data...
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </div>
         </article>
 
-        <article id="alertsSection" class="card">
-          <div class="section-heading">
-            <div>
-              <p class="section-eyebrow">Incident queue</p>
-              <h2>Open Alerts</h2>
-            </div>
-          </div>
+        <div class="secondary-grid">
+          <article id="alertsSection" class="panel alerts-panel">
+            <div class="panel-border-animation" aria-hidden="true"></div>
 
-          <div id="alerts" class="alerts-list"></div>
-        </article>
+            <div class="section-heading">
+              <div class="section-title-group">
+                <span class="section-icon warning-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 9v4m0 4h.01M10.3 3.8 2.4 18a2 2 0 0 0 1.75 3h15.7a2 2 0 0 0 1.75-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+                  </svg>
+                </span>
 
-        <article id="aiSection" class="card">
-          <div class="section-heading">
-            <div>
-              <p class="section-eyebrow">Live AI + RAG</p>
-              <h2>AI Explanation</h2>
+                <div>
+                  <p class="section-eyebrow">Incident Intelligence</p>
+                  <h2>Open Alerts</h2>
+                </div>
+              </div>
+
+              <span class="queue-count" id="queueCount">0 incidents</span>
             </div>
+
+            <div id="alerts" class="alerts-list" aria-live="polite">
+              <div class="panel-loading">
+                <span></span>
+                Analyzing network events...
+              </div>
+            </div>
+          </article>
+
+          <article class="panel collector-panel">
+            <div class="panel-border-animation" aria-hidden="true"></div>
+
+            <div class="section-heading">
+              <div class="section-title-group">
+                <span class="section-icon collector-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7h16M4 12h16M4 17h16M7 4v16M17 4v16" />
+                  </svg>
+                </span>
+
+                <div>
+                  <p class="section-eyebrow">Collection Engine</p>
+                  <h2>System Telemetry</h2>
+                </div>
+              </div>
+            </div>
+
+            <div class="collector-grid">
+              <div class="collector-stat">
+                <span>API Status</span>
+                <strong id="apiStatusValue">Checking</strong>
+              </div>
+
+              <div class="collector-stat">
+                <span>Collector State</span>
+                <strong id="collectorStateValue">Checking</strong>
+              </div>
+
+              <div class="collector-stat">
+                <span>Polling Interval</span>
+                <strong id="pollIntervalValue">--</strong>
+              </div>
+
+              <div class="collector-stat">
+                <span>Last Dashboard Sync</span>
+                <strong id="dashboardSyncValue">--</strong>
+              </div>
+            </div>
+
+            <div class="signal-visualizer" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </article>
+        </div>
+
+        <article id="aiSection" class="panel ai-panel">
+          <div class="panel-border-animation" aria-hidden="true"></div>
+
+          <div class="section-heading">
+            <div class="section-title-group">
+              <span class="section-icon ai-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M2 12h3m14 0h3M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12" />
+                  <circle cx="12" cy="12" r="4" />
+                </svg>
+              </span>
+
+              <div>
+                <p class="section-eyebrow">RAG Diagnostic Engine</p>
+                <h2>AI Incident Analysis</h2>
+              </div>
+            </div>
+
+            <span class="ai-ready-badge">
+              <i></i>
+              AI ready
+            </span>
           </div>
 
           <div id="aiBox" class="ai-box" aria-live="polite">
-            <p class="empty-state">
-              Select an alert to generate AI troubleshooting guidance.
-            </p>
+            <div class="ai-empty-state">
+              <div class="ai-empty-visual" aria-hidden="true">
+                <div class="ai-empty-ring"></div>
+
+                <img src="images/nocpilot-icon.png" alt="" />
+              </div>
+
+              <div>
+                <h3>NOCPilot Intelligence is standing by</h3>
+                <p>
+                  Select an active incident to retrieve relevant
+                  documentation and generate a live AI-assisted diagnosis.
+                </p>
+              </div>
+            </div>
           </div>
         </article>
       </section>
     </main>
+
+    <footer class="dashboard-footer">
+      <span class="footer-line"></span>
+      <p>NOCPilot Network Intelligence Platform</p>
+      <small>SAIT Capstone Project · 2026</small>
+      <span class="footer-line"></span>
+    </footer>
   </div>
 
   <script src="script.js"></script>
