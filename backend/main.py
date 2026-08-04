@@ -3,10 +3,9 @@ NOCPilot FastAPI backend.
 
 This application:
 - Serves the dashboard frontend
-- Runs device_connections.py automatically
-- Refreshes network_data.json continuously
-- Converts collected network information into dashboard data
-- Generates alerts from real network conditions
+- Collects live device data through Amir's SNMP monitoring module
+- Starts Amir's UDP syslog listener for real network alerts
+- Provides dashboard summary, device, interface, alert, and health endpoints
 - Provides live RAG + LLM troubleshooting responses
 
 Run from the project root:
@@ -19,13 +18,14 @@ Then open:
 """
 
 import asyncio
-import json
-import os
+import copy
 import re
-import sys
+import threading
+import time
 
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from datetime import datetime
+from itertools import count
 from pathlib import Path
 from typing import Any
 
@@ -34,135 +34,209 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.monitoring.snmp import (
+    collect_all_devices,
+    collect_device_interfaces,
+)
+from backend.monitoring.syslog import (
+    SYSLOG_PORT,
+    start_syslog_listener,
+)
+
 
 # =========================================================
-# FILE PATHS AND SETTINGS
+# PATHS AND SETTINGS
 # =========================================================
 
 BACKEND_DIRECTORY = Path(__file__).resolve().parent
 PROJECT_DIRECTORY = BACKEND_DIRECTORY.parent
 FRONTEND_DIRECTORY = PROJECT_DIRECTORY / "frontend"
 
-NETWORK_DATA_FILE = BACKEND_DIRECTORY / "network_data.json"
-COLLECTOR_SCRIPT = BACKEND_DIRECTORY / "device_connections.py"
+# Avoid polling every device twice when the frontend requests /devices and
+# /summary almost at the same time.
+SNMP_CACHE_SECONDS = 5.0
 
-POLL_INTERVAL_SECONDS = int(
-    os.getenv("NOCPILOT_POLL_INTERVAL_SECONDS", "30")
-)
+# Limit in-memory syslog alerts so the list does not grow forever.
+MAX_ALERTS = 200
 
 
 # =========================================================
-# COLLECTOR STATE
+# LIVE MONITORING STATE
 # =========================================================
 
-collector_state: dict[str, Any] = {
+monitoring_state: dict[str, Any] = {
     "running": False,
     "last_attempt": None,
     "last_success": None,
     "last_error": None,
 }
 
-collector_lock = asyncio.Lock()
+snmp_poll_lock = asyncio.Lock()
+alert_lock = threading.Lock()
+alert_id_counter = count(1)
 
-# Stores the latest successfully loaded JSON data.
-# This prevents the dashboard from becoming empty if the JSON file is
-# temporarily unavailable while being rewritten.
-last_good_network_data: dict[str, Any] = {}
+cached_devices: list[dict[str, Any]] = []
+cache_updated_monotonic = 0.0
+
+# Syslog alerts exist in memory while FastAPI is running.
+alerts: list[dict[str, Any]] = []
 
 
 # =========================================================
-# NETWORK DATA COLLECTION
+# ALERT HELPERS
 # =========================================================
 
-async def run_collector_once() -> None:
+def create_alert(
+    device_name: str,
+    alert_type: str,
+    severity: str,
+    description: str,
+) -> dict[str, Any]:
     """
-    Run device_connections.py one time.
+    Create an alert from a received syslog event.
 
-    The collector connects to the network devices and rewrites
-    backend/network_data.json with the latest collected information.
+    This function is passed directly to monitoring/syslog.py.
     """
 
-    async with collector_lock:
-        collector_state["running"] = True
-        collector_state["last_attempt"] = datetime.now().isoformat(
+    alert = {
+        "id": next(alert_id_counter),
+        "device_name": device_name,
+        "alert_type": alert_type,
+        "severity": severity.upper(),
+        "description": description,
+        "status": "OPEN",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    with alert_lock:
+        alerts.insert(0, alert)
+        del alerts[MAX_ALERTS:]
+
+    return alert
+
+
+def get_alert_snapshot() -> list[dict[str, Any]]:
+    """Return a safe copy of the current in-memory alerts."""
+
+    with alert_lock:
+        return copy.deepcopy(alerts)
+
+
+# =========================================================
+# SNMP DEVICE COLLECTION
+# =========================================================
+
+def normalize_device(
+    device: dict[str, Any],
+    collected_at: str,
+) -> dict[str, Any]:
+    """
+    Add compatibility fields used by the current dashboard.
+
+    Amir's SNMP module remains unchanged. This function only reshapes its
+    returned data so both the older and newer dashboard layouts can use it.
+    """
+
+    normalized = dict(device)
+
+    status = str(normalized.get("status", "DOWN")).upper()
+    interfaces_down = int(normalized.get("interfaces_down") or 0)
+    interface_count = int(normalized.get("interface_count") or 0)
+
+    if status != "UP":
+        health = "DOWN"
+    elif interfaces_down > 0:
+        health = "DEGRADED"
+    else:
+        health = "HEALTHY"
+
+    normalized.update(
+        {
+            "status": status,
+            "health": health,
+            "total_interfaces": interface_count,
+            "interfaces_admin_down": 0,
+            "software_version": normalized.get(
+                "software_version",
+                "N/A",
+            ),
+            "last_updated": collected_at,
+            "latency_ms": normalized.get("latency_ms", 0),
+            "packet_loss": normalized.get("packet_loss", 0),
+            "tunnel_status": normalized.get("tunnel_status", "N/A"),
+        }
+    )
+
+    return normalized
+
+
+async def collect_live_devices(
+    force_refresh: bool = False,
+) -> list[dict[str, Any]]:
+    """
+    Collect live SNMP data and briefly cache the result.
+
+    The short cache prevents duplicate polling when several dashboard
+    endpoints are requested at nearly the same time.
+    """
+
+    global cached_devices
+    global cache_updated_monotonic
+
+    now_monotonic = time.monotonic()
+
+    if (
+        not force_refresh
+        and cached_devices
+        and now_monotonic - cache_updated_monotonic < SNMP_CACHE_SECONDS
+    ):
+        return copy.deepcopy(cached_devices)
+
+    async with snmp_poll_lock:
+        now_monotonic = time.monotonic()
+
+        if (
+            not force_refresh
+            and cached_devices
+            and now_monotonic - cache_updated_monotonic < SNMP_CACHE_SECONDS
+        ):
+            return copy.deepcopy(cached_devices)
+
+        monitoring_state["running"] = True
+        monitoring_state["last_attempt"] = datetime.now().isoformat(
             timespec="seconds"
         )
-        collector_state["last_error"] = None
+        monitoring_state["last_error"] = None
 
         try:
-            if not COLLECTOR_SCRIPT.exists():
-                raise FileNotFoundError(
-                    f"Collector script not found: {COLLECTOR_SCRIPT}"
-                )
+            raw_devices = await collect_all_devices()
+            collected_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            process = await asyncio.create_subprocess_exec(
-                sys.executable,
-                str(COLLECTOR_SCRIPT),
-                cwd=str(BACKEND_DIRECTORY),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+            normalized_devices = [
+                normalize_device(device, collected_at)
+                for device in raw_devices
+            ]
 
-            try:
-                stdout, stderr = await process.communicate()
+            cached_devices = normalized_devices
+            cache_updated_monotonic = time.monotonic()
 
-            except asyncio.CancelledError:
-                process.terminate()
-
-                with suppress(ProcessLookupError):
-                    await process.wait()
-
-                raise
-
-            stdout_text = stdout.decode(
-                errors="replace"
-            ).strip()
-
-            stderr_text = stderr.decode(
-                errors="replace"
-            ).strip()
-
-            if process.returncode != 0:
-                error_message = stderr_text or stdout_text
-
-                if not error_message:
-                    error_message = (
-                        f"Collector exited with code "
-                        f"{process.returncode}."
-                    )
-
-                raise RuntimeError(error_message)
-
-            collector_state["last_success"] = datetime.now().isoformat(
+            monitoring_state["last_success"] = datetime.now().isoformat(
                 timespec="seconds"
             )
 
-            print(
-                "[NOCPilot] Network data collection completed successfully."
-            )
+            return copy.deepcopy(normalized_devices)
 
         except Exception as error:
-            collector_state["last_error"] = str(error)
+            monitoring_state["last_error"] = str(error)
 
-            print(
-                f"[NOCPilot] Network data collection failed: {error}"
-            )
+            # Keep showing the last successful data if a later poll fails.
+            if cached_devices:
+                return copy.deepcopy(cached_devices)
+
+            raise
 
         finally:
-            collector_state["running"] = False
-
-
-async def collection_loop() -> None:
-    """
-    Continuously run the network collector.
-
-    A collection starts immediately when FastAPI starts and repeats
-    according to POLL_INTERVAL_SECONDS.
-    """
-
-    while True:
-        await run_collector_once()
-        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            monitoring_state["running"] = False
 
 
 # =========================================================
@@ -171,21 +245,12 @@ async def collection_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Start the background collector with FastAPI and stop it cleanly
-    when FastAPI shuts down.
-    """
+    """Start Amir's syslog listener when FastAPI starts."""
 
-    collector_task = asyncio.create_task(
-        collection_loop()
-    )
+    syslog_thread = start_syslog_listener(create_alert)
+    app.state.syslog_thread = syslog_thread
 
     yield
-
-    collector_task.cancel()
-
-    with suppress(asyncio.CancelledError):
-        await collector_task
 
 
 # =========================================================
@@ -194,7 +259,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="NOCPilot API",
-    version="3.0",
+    version="4.0",
     lifespan=lifespan,
 )
 
@@ -205,394 +270,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# =========================================================
-# JSON DATA LOADING
-# =========================================================
-
-def load_network_data() -> dict[str, Any]:
-    """
-    Load the latest successfully collected network information.
-
-    If the file is temporarily unavailable or incomplete, the previous
-    successfully loaded copy is returned.
-    """
-
-    global last_good_network_data
-
-    if not NETWORK_DATA_FILE.exists():
-        return last_good_network_data
-
-    try:
-        with NETWORK_DATA_FILE.open(
-            "r",
-            encoding="utf-8",
-        ) as json_file:
-            network_data = json.load(json_file)
-
-        if not isinstance(network_data, dict):
-            raise ValueError(
-                "network_data.json must contain a JSON object."
-            )
-
-        last_good_network_data = network_data
-        return network_data
-
-    except (
-        OSError,
-        json.JSONDecodeError,
-        ValueError,
-    ) as error:
-        print(
-            f"[NOCPilot] Unable to read network_data.json: {error}"
-        )
-
-        return last_good_network_data
-
-
-def get_data_timestamp() -> str:
-    """Return the time when network_data.json was last updated."""
-
-    if not NETWORK_DATA_FILE.exists():
-        return "Unknown"
-
-    modified_time = NETWORK_DATA_FILE.stat().st_mtime
-
-    return datetime.fromtimestamp(
-        modified_time
-    ).strftime("%Y-%m-%d %H:%M:%S")
-
-
-# =========================================================
-# DEVICE DATA HELPERS
-# =========================================================
-
-def extract_management_ip(running_config: str) -> str:
-    """
-    Extract the first configured IPv4 address from a running configuration.
-
-    This is used because the current network_data.json file does not include
-    the device connection IP as its own field.
-    """
-
-    match = re.search(
-        r"^\s*ip address\s+"
-        r"(\d{1,3}(?:\.\d{1,3}){3})\s+"
-        r"\d{1,3}(?:\.\d{1,3}){3}",
-        running_config,
-        flags=re.MULTILINE,
-    )
-
-    if not match:
-        return "N/A"
-
-    return match.group(1)
-
-
-def infer_device_type(device_data: dict[str, Any]) -> str:
-    """Infer whether the collected device is a switch or router."""
-
-    version_data = device_data.get(
-        "System Version",
-        {},
-    )
-
-    if isinstance(version_data, dict):
-        full_output = str(
-            version_data.get("full_output", "")
-        ).lower()
-    else:
-        full_output = str(version_data).lower()
-
-    if (
-        "vios_l2" in full_output
-        or "iosvl2" in full_output
-        or "switch" in full_output
-    ):
-        return "Switch"
-
-    if (
-        "iosv" in full_output
-        or "router" in full_output
-    ):
-        return "Router"
-
-    return "Network Device"
-
-
-def is_administratively_down(interface: dict[str, Any]) -> bool:
-    """Return True when an interface was intentionally shut down."""
-
-    status = str(
-        interface.get("status", "")
-    ).strip().lower()
-
-    return "admin" in status
-
-
-def is_interface_up(interface: dict[str, Any]) -> bool:
-    """Return True when both interface status and protocol are up."""
-
-    status = str(
-        interface.get("status", "")
-    ).strip().lower()
-
-    protocol = str(
-        interface.get("protocol", "")
-    ).strip().lower()
-
-    return status == "up" and protocol == "up"
-
-
-def device_has_collection_error(
-    device_data: dict[str, Any],
-) -> bool:
-    """Detect connection or collection errors stored in the JSON."""
-
-    error_keys = {
-        "error",
-        "connection error",
-        "collection error",
-    }
-
-    return any(
-        str(key).strip().lower() in error_keys
-        for key in device_data
-    )
-
-
-def build_devices() -> list[dict[str, Any]]:
-    """
-    Convert network_data.json into the device format used by the dashboard.
-    """
-
-    network_data = load_network_data()
-    updated_at = get_data_timestamp()
-
-    dashboard_devices: list[dict[str, Any]] = []
-
-    for device_id, (
-        device_name,
-        device_data,
-    ) in enumerate(
-        sorted(network_data.items()),
-        start=1,
-    ):
-        if not isinstance(device_data, dict):
-            continue
-
-        interfaces = device_data.get(
-            "Interface Description",
-            [],
-        )
-
-        if not isinstance(interfaces, list):
-            interfaces = []
-
-        interfaces_up = sum(
-            1
-            for interface in interfaces
-            if (
-                isinstance(interface, dict)
-                and is_interface_up(interface)
-            )
-        )
-
-        interfaces_admin_down = sum(
-            1
-            for interface in interfaces
-            if (
-                isinstance(interface, dict)
-                and is_administratively_down(interface)
-            )
-        )
-
-        interfaces_down = sum(
-            1
-            for interface in interfaces
-            if (
-                isinstance(interface, dict)
-                and not is_interface_up(interface)
-                and not is_administratively_down(interface)
-            )
-        )
-
-        uptime_data = device_data.get(
-            "Device Uptime",
-            {},
-        )
-
-        if isinstance(uptime_data, dict):
-            uptime = uptime_data.get(
-                "uptime",
-                "Unknown",
-            )
-        else:
-            uptime = str(uptime_data)
-
-        version_data = device_data.get(
-            "System Version",
-            {},
-        )
-
-        if isinstance(version_data, dict):
-            software_version = version_data.get(
-                "version",
-                "Unknown",
-            )
-        else:
-            software_version = str(version_data)
-
-        running_config = str(
-            device_data.get("Run", "")
-        )
-
-        collection_failed = device_has_collection_error(
-            device_data
-        )
-
-        device_status = (
-            "DOWN"
-            if collection_failed
-            else "UP"
-        )
-
-        device_health = "DOWN"
-
-        if not collection_failed:
-            device_health = (
-                "DEGRADED"
-                if interfaces_down > 0
-                else "HEALTHY"
-            )
-
-        dashboard_devices.append(
-            {
-                "id": device_id,
-                "name": device_name,
-                "ip_address": extract_management_ip(
-                    running_config
-                ),
-                "type": infer_device_type(
-                    device_data
-                ),
-                "status": device_status,
-                "health": device_health,
-                "uptime": uptime,
-                "software_version": software_version,
-                "interfaces_up": interfaces_up,
-                "interfaces_down": interfaces_down,
-                "interfaces_admin_down": interfaces_admin_down,
-                "total_interfaces": len(interfaces),
-                "interfaces": interfaces,
-                "last_updated": updated_at,
-
-                # Kept for compatibility with the earlier dashboard structure.
-                "latency_ms": "N/A",
-                "packet_loss": "N/A",
-                "tunnel_status": "N/A",
-            }
-        )
-
-    return dashboard_devices
-
-
-# =========================================================
-# ALERT GENERATION
-# =========================================================
-
-def build_alerts() -> list[dict[str, Any]]:
-    """
-    Generate current alerts from the latest network collection.
-
-    Administratively disabled interfaces are ignored.
-    """
-
-    network_data = load_network_data()
-    created_at = get_data_timestamp()
-
-    generated_alerts: list[dict[str, Any]] = []
-    alert_id = 1
-
-    for device_name, device_data in sorted(
-        network_data.items()
-    ):
-        if not isinstance(device_data, dict):
-            continue
-
-        if device_has_collection_error(device_data):
-            generated_alerts.append(
-                {
-                    "id": alert_id,
-                    "device_name": device_name,
-                    "alert_type": "Device Unreachable",
-                    "severity": "CRITICAL",
-                    "description": (
-                        f"NOCPilot could not collect data from "
-                        f"{device_name}."
-                    ),
-                    "status": "OPEN",
-                    "created_at": created_at,
-                }
-            )
-
-            alert_id += 1
-            continue
-
-        interfaces = device_data.get(
-            "Interface Description",
-            [],
-        )
-
-        if not isinstance(interfaces, list):
-            continue
-
-        for interface in interfaces:
-            if not isinstance(interface, dict):
-                continue
-
-            if is_administratively_down(interface):
-                continue
-
-            if is_interface_up(interface):
-                continue
-
-            interface_name = interface.get(
-                "interface",
-                "Unknown interface",
-            )
-
-            interface_status = interface.get(
-                "status",
-                "unknown",
-            )
-
-            protocol_status = interface.get(
-                "protocol",
-                "unknown",
-            )
-
-            generated_alerts.append(
-                {
-                    "id": alert_id,
-                    "device_name": device_name,
-                    "alert_type": "Interface Down",
-                    "severity": "HIGH",
-                    "description": (
-                        f"{interface_name} on {device_name} is not "
-                        f"fully operational. Interface status is "
-                        f"{interface_status} and protocol status is "
-                        f"{protocol_status}."
-                    ),
-                    "status": "OPEN",
-                    "created_at": created_at,
-                }
-            )
-
-            alert_id += 1
-
-    return generated_alerts
 
 
 # =========================================================
@@ -628,11 +305,7 @@ def extract_section(
             for label in end_labels
         )
 
-        pattern = (
-            rf"{start}\s*(.*?)"
-            rf"(?={endings}|$)"
-        )
-
+        pattern = rf"{start}\s*(.*?)(?={endings}|$)"
     else:
         pattern = rf"{start}\s*(.*)$"
 
@@ -662,10 +335,7 @@ def clean_bullets(section_text: str) -> list[str]:
             cleaned_line,
         )
 
-        cleaned_line = cleaned_line.replace(
-            "**",
-            "",
-        ).strip()
+        cleaned_line = cleaned_line.replace("**", "").strip()
 
         if cleaned_line:
             cleaned_items.append(cleaned_line)
@@ -674,7 +344,7 @@ def clean_bullets(section_text: str) -> list[str]:
 
 
 def parse_ai_answer(answer: str) -> dict[str, Any]:
-    """Convert the LLM response into dashboard sections."""
+    """Convert the LLM response into the sections used by the dashboard."""
 
     summary = extract_section(
         answer,
@@ -729,12 +399,8 @@ def parse_ai_answer(answer: str) -> dict[str, Any]:
 
     return {
         "ai_summary": summary,
-        "possible_causes": clean_bullets(
-            causes_text
-        ),
-        "next_steps": clean_bullets(
-            actions_text
-        ),
+        "possible_causes": clean_bullets(causes_text),
+        "next_steps": clean_bullets(actions_text),
         "ticket_note": ticket_note,
     }
 
@@ -742,9 +408,7 @@ def parse_ai_answer(answer: str) -> dict[str, Any]:
 def get_live_ai_response(
     alert: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Retrieve documentation from ChromaDB and generate a live LLM response.
-    """
+    """Retrieve RAG context and generate a live LLM response."""
 
     from .llm_contact import generate_explanation
     from .retrieval import query_docs
@@ -755,33 +419,24 @@ def get_live_ai_response(
         f"Description: {alert['description']}"
     )
 
-    retrieval_result = query_docs(
-        query_text
-    )
+    retrieval_result = query_docs(query_text)
 
     llm_result = generate_explanation(
         query_text=retrieval_result["query"],
         retrieved_context=retrieval_result["context"],
     )
 
-    answer = str(
-        llm_result.get("answer", "")
-    ).strip()
+    answer = str(llm_result.get("answer", "")).strip()
 
     if not answer:
-        raise RuntimeError(
-            "The LLM returned an empty response."
-        )
+        raise RuntimeError("The LLM returned an empty response.")
 
     if answer.lower().startswith(
         "the llm model is not loaded or could not be contacted"
     ):
         raise RuntimeError(answer)
 
-    parsed_result = parse_ai_answer(
-        answer
-    )
-
+    parsed_result = parse_ai_answer(answer)
     parsed_result["source"] = "live_ai_rag"
 
     return parsed_result
@@ -793,69 +448,123 @@ def get_live_ai_response(
 
 @app.get("/health")
 def health_check() -> dict[str, Any]:
-    """Return backend and collector health information."""
+    """Return API, SNMP, and syslog monitoring health information."""
+
+    syslog_thread = getattr(app.state, "syslog_thread", None)
 
     return {
         "status": "healthy",
         "service": "NOCPilot API",
-        "version": "3.0",
-        "collector": collector_state,
-        "poll_interval_seconds": POLL_INTERVAL_SECONDS,
-        "network_data_available": NETWORK_DATA_FILE.exists(),
+        "version": "4.0",
+        "collector": monitoring_state,
+        "poll_interval_seconds": None,
+        "network_data_available": bool(cached_devices),
+        "monitoring": {
+            "snmp_mode": "live_on_request",
+            "snmp_cache_seconds": SNMP_CACHE_SECONDS,
+            "syslog_port": SYSLOG_PORT,
+            "syslog_listener_alive": bool(
+                syslog_thread and syslog_thread.is_alive()
+            ),
+        },
     }
 
 
 @app.get("/collector-status")
 def get_collector_status() -> dict[str, Any]:
-    """Return the current background collector status."""
+    """Return current live SNMP monitoring status."""
 
     return {
-        **collector_state,
-        "poll_interval_seconds": POLL_INTERVAL_SECONDS,
-        "network_data_file": str(
-            NETWORK_DATA_FILE
-        ),
+        **monitoring_state,
+        "mode": "live_on_request",
+        "cache_seconds": SNMP_CACHE_SECONDS,
+        "cached_device_count": len(cached_devices),
     }
 
 
 @app.post("/refresh")
 async def refresh_network_data() -> dict[str, Any]:
-    """Manually run one network collection immediately."""
+    """Force a fresh SNMP poll immediately."""
 
-    await run_collector_once()
-
-    if collector_state["last_error"]:
+    try:
+        devices = await collect_live_devices(
+            force_refresh=True
+        )
+    except Exception as error:
         raise HTTPException(
             status_code=503,
-            detail=collector_state["last_error"],
-        )
+            detail=f"SNMP refresh failed: {error}",
+        ) from error
 
     return {
-        "message": "Network data refreshed successfully.",
-        "last_success": collector_state["last_success"],
+        "message": "Live SNMP data refreshed successfully.",
+        "last_success": monitoring_state["last_success"],
+        "device_count": len(devices),
     }
 
 
 @app.get("/devices")
-def get_devices() -> list[dict[str, Any]]:
-    """Return devices created from network_data.json."""
+async def get_devices() -> list[dict[str, Any]]:
+    """Return live SNMP device information."""
 
-    return build_devices()
+    try:
+        return await collect_live_devices()
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to collect SNMP device data: {error}",
+        ) from error
+
+
+@app.get("/devices/{device_id}/interfaces")
+async def get_device_interfaces(
+    device_id: int,
+) -> list[dict[str, Any]]:
+    """Return detailed live SNMP interfaces for one device."""
+
+    try:
+        interfaces = await collect_device_interfaces(device_id)
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to collect interface data: {error}",
+        ) from error
+
+    if interfaces is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found.",
+        )
+
+    return interfaces
 
 
 @app.get("/alerts")
 def get_alerts() -> list[dict[str, Any]]:
-    """Return current alerts generated from real collected data."""
+    """Return alerts received by Amir's syslog listener."""
 
-    return build_alerts()
+    return get_alert_snapshot()
 
 
 @app.get("/summary")
-def get_summary() -> dict[str, int]:
-    """Return dashboard summary-card counts."""
+async def get_summary() -> dict[str, int]:
+    """Return dashboard counts from live SNMP devices and syslog alerts."""
 
-    devices = build_devices()
-    alerts = build_alerts()
+    try:
+        devices = await collect_live_devices()
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to collect dashboard summary: {error}",
+        ) from error
+
+    current_alerts = get_alert_snapshot()
+
+    open_alerts = [
+        alert
+        for alert in current_alerts
+        if alert["status"] == "OPEN"
+    ]
 
     return {
         "total_devices": len(devices),
@@ -864,13 +573,13 @@ def get_summary() -> dict[str, int]:
             for device in devices
         ),
         "offline_devices": sum(
-            device["status"] == "DOWN"
+            device["status"] != "UP"
             for device in devices
         ),
-        "active_alerts": len(alerts),
+        "active_alerts": len(open_alerts),
         "critical_alerts": sum(
             alert["severity"] == "CRITICAL"
-            for alert in alerts
+            for alert in open_alerts
         ),
     }
 
@@ -879,14 +588,14 @@ def get_summary() -> dict[str, int]:
 def explain_alert(
     alert_id: int,
 ) -> dict[str, Any]:
-    """Generate a live RAG + LLM explanation for a current alert."""
+    """Generate live RAG + LLM troubleshooting guidance for one alert."""
 
-    alerts = build_alerts()
+    current_alerts = get_alert_snapshot()
 
     alert = next(
         (
             current_alert
-            for current_alert in alerts
+            for current_alert in current_alerts
             if current_alert["id"] == alert_id
         ),
         None,
@@ -899,9 +608,7 @@ def explain_alert(
         )
 
     try:
-        ai_result = get_live_ai_response(
-            alert
-        )
+        ai_result = get_live_ai_response(alert)
 
     except Exception as error:
         raise HTTPException(
@@ -938,8 +645,8 @@ def serve_dashboard():
     return FileResponse(index_file)
 
 
-# This mount must remain after all API endpoints.
-# It serves login.html, script.js, CSS files, images, and other frontend assets.
+# Keep this mount after every API endpoint.
+# It serves login.html, CSS, JavaScript, images, and other frontend assets.
 if FRONTEND_DIRECTORY.exists():
     app.mount(
         "/",

@@ -6,7 +6,7 @@
 
   <title>NOCPilot</title>
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
 </head>
 
@@ -76,9 +76,8 @@
             LIVE NETWORK INTELLIGENCE
           </p>
 
-          <h1>
-            Network Operations
-            <span> Center</span>
+          <h1 class="noc-title">
+            Network Operations <span>Center</span>
           </h1>
 
           <p class="hero-description">
@@ -413,6 +412,59 @@
     </footer>
   </div>
 
-  <script src="script.js"></script>
+
+  <div
+    class="interface-drawer-backdrop"
+    id="interfaceDrawerBackdrop"
+    hidden
+  ></div>
+
+  <aside
+    class="interface-drawer"
+    id="interfaceDrawer"
+    role="dialog"
+    aria-modal="true"
+    aria-hidden="true"
+    aria-labelledby="interfaceDrawerTitle"
+  >
+    <div class="interface-drawer-header">
+      <div>
+        <p class="section-eyebrow">Live SNMP Details</p>
+        <h2 id="interfaceDrawerTitle">Device Interfaces</h2>
+        <p class="interface-drawer-device" id="interfaceDrawerDevice">
+          Select a device
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="interface-drawer-close"
+        id="interfaceDrawerClose"
+        aria-label="Close interface details"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="interface-drawer-summary" id="interfaceDrawerSummary">
+      <span><strong>0</strong> Total</span>
+      <span><strong>0</strong> Up</span>
+      <span><strong>0</strong> Down</span>
+    </div>
+
+    <div
+      class="interface-drawer-content"
+      id="interfaceDrawerContent"
+      aria-live="polite"
+    >
+      <div class="interface-drawer-empty">
+        Select the interface count on a device to view live details.
+      </div>
+    </div>
+  </aside>
+
+  <script src="script.js?v=4"></script>
 </body>
 </html>

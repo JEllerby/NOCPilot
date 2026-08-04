@@ -8,6 +8,7 @@ const DASHBOARD_REFRESH_INTERVAL_MS = 15000;
 
 let activeAiRequest = 0;
 let refreshTimer = null;
+let lastFocusedInterfaceControl = null;
 
 
 /* =========================================================
@@ -301,6 +302,7 @@ function renderDevices(devices) {
       const interfacesDown = Number(device.interfaces_down) || 0;
       const interfacesAdminDown =
         Number(device.interfaces_admin_down) || 0;
+
       const totalInterfaces =
         Number(device.total_interfaces) ||
         interfacesUp + interfacesDown + interfacesAdminDown;
@@ -331,7 +333,9 @@ function renderDevices(devices) {
             </code>
           </td>
 
-          <td>${escapeHtml(device.type || "Network Device")}</td>
+          <td>
+            ${escapeHtml(device.type || "Network Device")}
+          </td>
 
           <td>
             <span class="status-badge status-${safeClassName(status)}">
@@ -353,16 +357,36 @@ function renderDevices(devices) {
           </td>
 
           <td>
-            <div class="interface-metric">
+            <button
+              type="button"
+              class="interface-metric interface-button"
+              data-device-id="${escapeHtml(device.id)}"
+              data-device-name="${escapeHtml(device.name)}"
+              aria-label="View live interfaces for ${escapeHtml(device.name)}"
+              title="View interface details"
+            >
               <div class="interface-metric-top">
-                <span>${interfacesUp}/${totalInterfaces} up</span>
-                <small>${interfacesDown} down</small>
+                <span>
+                  ${interfacesUp}/${totalInterfaces} up
+                </span>
+
+                <small>
+                  ${interfacesDown} down
+                </small>
               </div>
 
               <div class="interface-track">
                 <span style="width: ${interfacePercentage}%"></span>
               </div>
-            </div>
+
+              <span class="interface-view-label">
+                View interfaces
+
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
+            </button>
           </td>
 
           <td>
@@ -374,6 +398,343 @@ function renderDevices(devices) {
       `;
     })
     .join("");
+
+  table
+    .querySelectorAll(".interface-button")
+    .forEach(interfaceButton => {
+      interfaceButton.addEventListener("click", () => {
+        const deviceId = Number(
+          interfaceButton.dataset.deviceId
+        );
+
+        const deviceName =
+          interfaceButton.dataset.deviceName ||
+          "Network device";
+
+        openInterfaceDrawer(
+          deviceId,
+          deviceName,
+          interfaceButton
+        );
+      });
+    });
+}
+
+
+/* =========================================================
+   INTERFACE DETAILS
+========================================================= */
+
+function getInterfaceState(interfaceData) {
+  const adminStatus = String(
+    interfaceData.admin_status || "UNKNOWN"
+  ).toUpperCase();
+
+  const operStatus = String(
+    interfaceData.oper_status || "UNKNOWN"
+  ).toUpperCase();
+
+  if (adminStatus === "DOWN") {
+    return {
+      label: "ADMIN DOWN",
+      className: "admin-down",
+    };
+  }
+
+  if (operStatus === "UP") {
+    return {
+      label: "UP",
+      className: "up",
+    };
+  }
+
+  if (operStatus === "DOWN") {
+    return {
+      label: "DOWN",
+      className: "down",
+    };
+  }
+
+  return {
+    label: operStatus,
+    className: "unknown",
+  };
+}
+
+
+function updateInterfaceSummary(interfaces) {
+  const summary = document.getElementById(
+    "interfaceDrawerSummary"
+  );
+
+  if (!summary) {
+    return;
+  }
+
+  const totalCount = interfaces.length;
+
+  const upCount = interfaces.filter(interfaceData => {
+    return String(
+      interfaceData.oper_status || ""
+    ).toUpperCase() === "UP";
+  }).length;
+
+  const downCount = totalCount - upCount;
+
+  summary.innerHTML = `
+    <span>
+      <strong>${totalCount}</strong>
+      Total
+    </span>
+
+    <span>
+      <strong>${upCount}</strong>
+      Up
+    </span>
+
+    <span>
+      <strong>${downCount}</strong>
+      Down
+    </span>
+  `;
+}
+
+
+function renderInterfaceDetails(interfaces) {
+  const content = document.getElementById(
+    "interfaceDrawerContent"
+  );
+
+  if (!content) {
+    return;
+  }
+
+  if (!Array.isArray(interfaces) || interfaces.length === 0) {
+    updateInterfaceSummary([]);
+
+    content.innerHTML = `
+      <div class="interface-drawer-empty">
+        No interface information was returned by SNMP.
+      </div>
+    `;
+
+    return;
+  }
+
+  updateInterfaceSummary(interfaces);
+
+  content.innerHTML = `
+    <div class="interface-detail-list">
+      ${interfaces
+        .map(interfaceData => {
+          const state = getInterfaceState(interfaceData);
+
+          const interfaceName =
+            interfaceData.name ||
+            interfaceData.description ||
+            `Interface ${interfaceData.index ?? "—"}`;
+
+          const description =
+            interfaceData.description &&
+            interfaceData.description !== interfaceName
+              ? interfaceData.description
+              : "No additional description";
+
+          return `
+            <article class="interface-detail-card">
+              <div class="interface-detail-main">
+                <span class="interface-index">
+                  ${escapeHtml(interfaceData.index ?? "—")}
+                </span>
+
+                <div>
+                  <h3>
+                    ${escapeHtml(interfaceName)}
+                  </h3>
+
+                  <p>
+                    ${escapeHtml(description)}
+                  </p>
+                </div>
+              </div>
+
+              <div class="interface-detail-statuses">
+                <span>
+                  <small>Admin</small>
+
+                  <strong>
+                    ${escapeHtml(
+                      String(
+                        interfaceData.admin_status || "UNKNOWN"
+                      ).toUpperCase()
+                    )}
+                  </strong>
+                </span>
+
+                <span>
+                  <small>Operational</small>
+
+                  <strong>
+                    ${escapeHtml(
+                      String(
+                        interfaceData.oper_status || "UNKNOWN"
+                      ).toUpperCase()
+                    )}
+                  </strong>
+                </span>
+
+                <span
+                  class="interface-state interface-state-${safeClassName(
+                    state.className
+                  )}"
+                >
+                  <i></i>
+                  ${escapeHtml(state.label)}
+                </span>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+
+async function openInterfaceDrawer(
+  deviceId,
+  deviceName,
+  triggerElement
+) {
+  const drawer = document.getElementById(
+    "interfaceDrawer"
+  );
+
+  const backdrop = document.getElementById(
+    "interfaceDrawerBackdrop"
+  );
+
+  const title = document.getElementById(
+    "interfaceDrawerTitle"
+  );
+
+  const deviceLabel = document.getElementById(
+    "interfaceDrawerDevice"
+  );
+
+  const content = document.getElementById(
+    "interfaceDrawerContent"
+  );
+
+  if (
+    !drawer ||
+    !backdrop ||
+    !title ||
+    !deviceLabel ||
+    !content
+  ) {
+    return;
+  }
+
+  if (!Number.isFinite(deviceId)) {
+    return;
+  }
+
+  lastFocusedInterfaceControl =
+    triggerElement || null;
+
+  title.textContent =
+    `${deviceName} Interfaces`;
+
+  deviceLabel.textContent =
+    `Device ID ${deviceId} · Live SNMP interface inventory`;
+
+  updateInterfaceSummary([]);
+
+  content.innerHTML = `
+    <div class="interface-drawer-loading">
+      <span></span>
+      Retrieving live interface information...
+    </div>
+  `;
+
+  backdrop.hidden = false;
+
+  drawer.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+  document.body.classList.add(
+    "interface-drawer-open"
+  );
+
+  window.requestAnimationFrame(() => {
+    backdrop.classList.add("is-visible");
+    drawer.classList.add("is-open");
+  });
+
+  document
+    .getElementById("interfaceDrawerClose")
+    ?.focus();
+
+  try {
+    const interfaces = await fetchJson(
+      `/devices/${encodeURIComponent(deviceId)}/interfaces`
+    );
+
+    renderInterfaceDetails(interfaces);
+  } catch (error) {
+    content.innerHTML = `
+      <div class="error-state interface-drawer-error">
+        <div class="error-state-icon">!</div>
+
+        <div>
+          <strong>
+            Interface details could not be loaded
+          </strong>
+
+          <p>
+            ${escapeHtml(error.message)}
+          </p>
+        </div>
+      </div>
+    `;
+  }
+}
+
+
+function closeInterfaceDrawer() {
+  const drawer = document.getElementById(
+    "interfaceDrawer"
+  );
+
+  const backdrop = document.getElementById(
+    "interfaceDrawerBackdrop"
+  );
+
+  if (!drawer || !backdrop) {
+    return;
+  }
+
+  drawer.classList.remove("is-open");
+  backdrop.classList.remove("is-visible");
+
+  drawer.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+  document.body.classList.remove(
+    "interface-drawer-open"
+  );
+
+  window.setTimeout(() => {
+    backdrop.hidden = true;
+  }, 240);
+
+  lastFocusedInterfaceControl?.focus();
+  lastFocusedInterfaceControl = null;
 }
 
 
@@ -385,17 +746,27 @@ function renderAlerts(alerts) {
   const alertBox = document.getElementById("alerts");
   const queueCount = document.getElementById("queueCount");
 
-  const alertCount = Array.isArray(alerts) ? alerts.length : 0;
+  const alertCount =
+    Array.isArray(alerts)
+      ? alerts.length
+      : 0;
 
   queueCount.textContent =
-    `${alertCount} ${alertCount === 1 ? "incident" : "incidents"}`;
+    `${alertCount} ${
+      alertCount === 1
+        ? "incident"
+        : "incidents"
+    }`;
 
   alertBox.innerHTML = "";
 
   if (alertCount === 0) {
     alertBox.innerHTML = `
       <div class="healthy-state">
-        <div class="healthy-state-icon" aria-hidden="true">
+        <div
+          class="healthy-state-icon"
+          aria-hidden="true"
+        >
           <svg viewBox="0 0 24 24">
             <path d="m5 12 4 4L19 6" />
           </svg>
@@ -403,12 +774,15 @@ function renderAlerts(alerts) {
 
         <div>
           <h3>All systems nominal</h3>
+
           <p>
-            NOCPilot has not detected any active network incidents.
+            NOCPilot has not detected any active
+            network incidents.
           </p>
         </div>
       </div>
     `;
+
     return;
   }
 
@@ -417,11 +791,14 @@ function renderAlerts(alerts) {
       alert.severity || "UNKNOWN"
     ).toUpperCase();
 
-    const alertButton = document.createElement("button");
+    const alertButton =
+      document.createElement("button");
 
     alertButton.type = "button";
+
     alertButton.className =
       `alert-item alert-${safeClassName(severity)}`;
+
     alertButton.style.setProperty(
       "--alert-delay",
       `${index * 70}ms`
@@ -438,7 +815,11 @@ function renderAlerts(alerts) {
             ${escapeHtml(alert.alert_type)}
           </strong>
 
-          <span class="severity-badge severity-${safeClassName(severity)}">
+          <span
+            class="severity-badge severity-${safeClassName(
+              severity
+            )}"
+          >
             ${escapeHtml(severity)}
           </span>
         </span>
@@ -453,12 +834,17 @@ function renderAlerts(alerts) {
             ${escapeHtml(alert.status || "OPEN")}
           </span>
 
-          <time>${escapeHtml(formatDateTime(alert.created_at))}</time>
+          <time>
+            ${escapeHtml(
+              formatDateTime(alert.created_at)
+            )}
+          </time>
         </span>
       </span>
 
       <span class="alert-action" aria-hidden="true">
         Analyze
+
         <svg viewBox="0 0 24 24">
           <path d="m9 18 6-6-6-6" />
         </svg>
@@ -467,7 +853,10 @@ function renderAlerts(alerts) {
 
     alertButton.addEventListener(
       "click",
-      () => explainAlert(alert.id, alertButton)
+      () => explainAlert(
+        alert.id,
+        alertButton
+      )
     );
 
     alertBox.appendChild(alertButton);
@@ -480,48 +869,83 @@ function renderAlerts(alerts) {
 ========================================================= */
 
 function renderSystemHealth(health) {
-  const collector = health.collector || {};
-  const collectorRunning = Boolean(collector.running);
-  const collectorError = collector.last_error;
+  const collector =
+    health.collector || {};
 
-  document.getElementById("apiStatusValue").textContent =
-    health.status === "healthy" ? "Operational" : "Degraded";
+  const collectorRunning =
+    Boolean(collector.running);
 
-  document.getElementById("pollIntervalValue").textContent =
-    health.poll_interval_seconds
-      ? `${health.poll_interval_seconds}s`
-      : "Not reported";
+  const collectorError =
+    collector.last_error;
+
+  document
+    .getElementById("apiStatusValue")
+    .textContent =
+      health.status === "healthy"
+        ? "Operational"
+        : "Degraded";
+
+  document
+    .getElementById("pollIntervalValue")
+    .textContent =
+      health.poll_interval_seconds
+        ? `${health.poll_interval_seconds}s`
+        : "Not reported";
 
   if (collectorError) {
-    setPlatformState("warning", "Degraded");
+    setPlatformState(
+      "warning",
+      "Degraded"
+    );
 
-    document.getElementById("collectorStatus").textContent =
-      "Collection error";
+    document
+      .getElementById("collectorStatus")
+      .textContent =
+        "Collection error";
 
-    document.getElementById("collectorStateValue").textContent =
-      "Attention required";
+    document
+      .getElementById("collectorStateValue")
+      .textContent =
+        "Attention required";
   } else if (collectorRunning) {
-    setPlatformState("live", "Collecting");
+    setPlatformState(
+      "live",
+      "Collecting"
+    );
 
-    document.getElementById("collectorStatus").textContent =
-      "Collecting now";
+    document
+      .getElementById("collectorStatus")
+      .textContent =
+        "Collecting now";
 
-    document.getElementById("collectorStateValue").textContent =
-      "Active collection";
+    document
+      .getElementById("collectorStateValue")
+      .textContent =
+        "Active collection";
   } else {
-    setPlatformState("live", "Systems live");
+    setPlatformState(
+      "live",
+      "Systems live"
+    );
 
-    document.getElementById("collectorStatus").textContent =
-      "Monitoring";
+    document
+      .getElementById("collectorStatus")
+      .textContent =
+        "Monitoring";
 
-    document.getElementById("collectorStateValue").textContent =
-      "Standing by";
+    document
+      .getElementById("collectorStateValue")
+      .textContent =
+        "Standing by";
   }
 
-  const lastSuccess = collector.last_success;
+  const lastSuccess =
+    collector.last_success;
 
-  document.getElementById("lastCollection").textContent =
-    formatRelativeStatus(lastSuccess);
+  document
+    .getElementById("lastCollection")
+    .textContent =
+      formatRelativeStatus(lastSuccess);
 }
 
 
@@ -557,15 +981,19 @@ async function refreshDashboard() {
   } else {
     failedRequests += 1;
 
-    document.getElementById("deviceTable").innerHTML = `
-      <tr>
-        <td colspan="8">
-          <div class="error-state compact">
-            ${escapeHtml(devicesResult.reason.message)}
-          </div>
-        </td>
-      </tr>
-    `;
+    document
+      .getElementById("deviceTable")
+      .innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="error-state compact">
+              ${escapeHtml(
+                devicesResult.reason.message
+              )}
+            </div>
+          </td>
+        </tr>
+      `;
   }
 
   if (alertsResult.status === "fulfilled") {
@@ -573,11 +1001,15 @@ async function refreshDashboard() {
   } else {
     failedRequests += 1;
 
-    document.getElementById("alerts").innerHTML = `
-      <div class="error-state">
-        ${escapeHtml(alertsResult.reason.message)}
-      </div>
-    `;
+    document
+      .getElementById("alerts")
+      .innerHTML = `
+        <div class="error-state">
+          ${escapeHtml(
+            alertsResult.reason.message
+          )}
+        </div>
+      `;
   }
 
   if (healthResult.status === "fulfilled") {
@@ -586,21 +1018,33 @@ async function refreshDashboard() {
     failedRequests += 1;
   }
 
-  const syncTime = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date());
+  const syncTime =
+    new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(new Date());
 
-  document.getElementById("dashboardSyncValue").textContent =
-    syncTime;
+  document
+    .getElementById("dashboardSyncValue")
+    .textContent =
+      syncTime;
 
   if (failedRequests === results.length) {
-    setPlatformState("offline", "API unavailable");
-    document.getElementById("collectorStatus").textContent =
-      "Disconnected";
+    setPlatformState(
+      "offline",
+      "API unavailable"
+    );
+
+    document
+      .getElementById("collectorStatus")
+      .textContent =
+        "Disconnected";
   } else if (failedRequests > 0) {
-    setPlatformState("warning", "Partial data");
+    setPlatformState(
+      "warning",
+      "Partial data"
+    );
   }
 }
 
@@ -621,13 +1065,20 @@ function setSelectedAlert(selectedAlert) {
 }
 
 
-async function explainAlert(alertId, selectedAlert) {
-  const aiBox = document.getElementById("aiBox");
-  const aiSection = document.getElementById("aiSection");
+async function explainAlert(
+  alertId,
+  selectedAlert
+) {
+  const aiBox =
+    document.getElementById("aiBox");
+
+  const aiSection =
+    document.getElementById("aiSection");
 
   setSelectedAlert(selectedAlert);
 
-  const requestId = ++activeAiRequest;
+  const requestId =
+    ++activeAiRequest;
 
   aiBox.innerHTML = `
     <div class="ai-loading-container">
@@ -649,13 +1100,17 @@ async function explainAlert(alertId, selectedAlert) {
         <span class="ai-particle particle-three"></span>
       </div>
 
-      <p class="ai-processing-label">NOCPILOT INTELLIGENCE ENGINE</p>
+      <p class="ai-processing-label">
+        NOCPILOT INTELLIGENCE ENGINE
+      </p>
 
-      <h3>Analyzing the network incident</h3>
+      <h3>
+        Analyzing the network incident
+      </h3>
 
       <p class="ai-loading-text">
-        Correlating live telemetry with the knowledge base and
-        generating an evidence-guided response.
+        Correlating live telemetry with the knowledge
+        base and generating an evidence-guided response.
       </p>
 
       <div class="loading-steps" aria-hidden="true">
@@ -687,13 +1142,16 @@ async function explainAlert(alertId, selectedAlert) {
   });
 
   try {
-    const data = await fetchJson(`/ai-explain/${alertId}`);
+    const data = await fetchJson(
+      `/ai-explain/${alertId}`
+    );
 
     if (requestId !== activeAiRequest) {
       return;
     }
 
     const alert = data.alert || {};
+
     const severity = String(
       alert.severity || "UNKNOWN"
     ).toUpperCase();
@@ -702,16 +1160,27 @@ async function explainAlert(alertId, selectedAlert) {
       <div class="ai-result">
         <div class="ai-alert-header">
           <div class="ai-alert-identity">
-            <span class="ai-alert-symbol" aria-hidden="true">
+            <span
+              class="ai-alert-symbol"
+              aria-hidden="true"
+            >
               <svg viewBox="0 0 24 24">
                 <path d="M12 9v4m0 4h.01M10.3 3.8 2.4 18a2 2 0 0 0 1.75 3h15.7a2 2 0 0 0 1.75-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
               </svg>
             </span>
 
             <div>
-              <p>Incident analysis complete</p>
-              <h3>${escapeHtml(alert.device_name)}</h3>
-              <span>${escapeHtml(alert.alert_type)}</span>
+              <p>
+                Incident analysis complete
+              </p>
+
+              <h3>
+                ${escapeHtml(alert.device_name)}
+              </h3>
+
+              <span>
+                ${escapeHtml(alert.alert_type)}
+              </span>
             </div>
           </div>
 
@@ -721,7 +1190,11 @@ async function explainAlert(alertId, selectedAlert) {
               Live AI + RAG
             </span>
 
-            <span class="severity-badge severity-${safeClassName(severity)}">
+            <span
+              class="severity-badge severity-${safeClassName(
+                severity
+              )}"
+            >
               ${escapeHtml(severity)}
             </span>
           </div>
@@ -734,7 +1207,9 @@ async function explainAlert(alertId, selectedAlert) {
               <h4>Executive Summary</h4>
             </div>
 
-            <p>${escapeHtml(data.ai_summary)}</p>
+            <p>
+              ${escapeHtml(data.ai_summary)}
+            </p>
           </section>
 
           <section class="ai-card">
@@ -743,7 +1218,9 @@ async function explainAlert(alertId, selectedAlert) {
               <h4>Possible Causes</h4>
             </div>
 
-            <ul>${renderList(data.possible_causes)}</ul>
+            <ul>
+              ${renderList(data.possible_causes)}
+            </ul>
           </section>
 
           <section class="ai-card">
@@ -763,7 +1240,10 @@ async function explainAlert(alertId, selectedAlert) {
               <h4>Generated Ticket Note</h4>
             </div>
 
-            <div class="ticket-note" id="ticketNote">
+            <div
+              class="ticket-note"
+              id="ticketNote"
+            >
               ${escapeHtml(data.ticket_note)}
             </div>
 
@@ -773,8 +1253,18 @@ async function explainAlert(alertId, selectedAlert) {
                 class="copy-btn"
                 id="copyTicketButton"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="8"
+                    y="8"
+                    width="12"
+                    height="12"
+                    rx="2"
+                  />
+
                   <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
                 </svg>
 
@@ -794,7 +1284,10 @@ async function explainAlert(alertId, selectedAlert) {
 
     document
       .getElementById("copyTicketButton")
-      .addEventListener("click", copyTicketNote);
+      .addEventListener(
+        "click",
+        copyTicketNote
+      );
   } catch (error) {
     if (requestId !== activeAiRequest) {
       return;
@@ -802,11 +1295,18 @@ async function explainAlert(alertId, selectedAlert) {
 
     aiBox.innerHTML = `
       <div class="error-state ai-error-state">
-        <div class="error-state-icon">!</div>
+        <div class="error-state-icon">
+          !
+        </div>
 
         <div>
-          <strong>AI analysis could not be generated</strong>
-          <p>${escapeHtml(error.message)}</p>
+          <strong>
+            AI analysis could not be generated
+          </strong>
+
+          <p>
+            ${escapeHtml(error.message)}
+          </p>
         </div>
       </div>
     `;
@@ -815,8 +1315,11 @@ async function explainAlert(alertId, selectedAlert) {
 
 
 async function copyTicketNote() {
-  const ticketNote = document.getElementById("ticketNote");
-  const message = document.getElementById("copyMessage");
+  const ticketNote =
+    document.getElementById("ticketNote");
+
+  const message =
+    document.getElementById("copyMessage");
 
   if (!ticketNote || !message) {
     return;
@@ -827,15 +1330,22 @@ async function copyTicketNote() {
       ticketNote.textContent.trim()
     );
 
-    message.textContent = "✓ Ticket note copied";
-    message.className = "copy-message is-success";
+    message.textContent =
+      "✓ Ticket note copied";
+
+    message.className =
+      "copy-message is-success";
   } catch {
-    message.textContent = "Unable to copy ticket note";
-    message.className = "copy-message is-error";
+    message.textContent =
+      "Unable to copy ticket note";
+
+    message.className =
+      "copy-message is-error";
   }
 
   window.setTimeout(() => {
-    message.className = "copy-message";
+    message.className =
+      "copy-message";
   }, 2600);
 }
 
@@ -852,10 +1362,40 @@ function logout() {
 function initializeDashboard() {
   document
     .getElementById("logoutLink")
-    .addEventListener("click", logout);
+    .addEventListener(
+      "click",
+      logout
+    );
+
+  document
+    .getElementById("interfaceDrawerClose")
+    ?.addEventListener(
+      "click",
+      closeInterfaceDrawer
+    );
+
+  document
+    .getElementById("interfaceDrawerBackdrop")
+    ?.addEventListener(
+      "click",
+      closeInterfaceDrawer
+    );
+
+  document.addEventListener(
+    "keydown",
+    event => {
+      if (event.key === "Escape") {
+        closeInterfaceDrawer();
+      }
+    }
+  );
 
   updateClock();
-  window.setInterval(updateClock, 1000);
+
+  window.setInterval(
+    updateClock,
+    1000
+  );
 
   refreshDashboard();
 
@@ -864,12 +1404,18 @@ function initializeDashboard() {
     DASHBOARD_REFRESH_INTERVAL_MS
   );
 
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      refreshDashboard();
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (!document.hidden) {
+        refreshDashboard();
+      }
     }
-  });
+  );
 }
 
 
-document.addEventListener("DOMContentLoaded", initializeDashboard);
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeDashboard
+);
