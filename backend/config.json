@@ -1,0 +1,4 @@
+{
+    "llm_endpoint": "http://25.5.202.103:1234/v1",
+    "api_key": "unused"
+}

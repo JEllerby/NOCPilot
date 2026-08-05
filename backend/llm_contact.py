@@ -1,4 +1,6 @@
 from openai import OpenAI
+import json
+from pathlib import Path
 
 """ When calling generate_explanation use the following format:
 
@@ -11,11 +13,28 @@ from openai import OpenAI
     dictionary with the keys query and context.
 """
 
-client = OpenAI(
-    base_url="http://25.5.202.103:1234/v1",
-    api_key="unused"
-)
+CONFIG_FILE = Path(__file__).resolve().parent / "config.json"
 
+
+
+
+def load_settings():
+    if not CONFIG_FILE.exists():
+        raise FileNotFoundError(f"Missing configuration file: {CONFIG_FILE}")
+
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def create_client():
+    settings = load_settings()
+
+    return OpenAI(
+        base_url=settings["llm_endpoint"],
+        api_key=settings["api_key"]
+    )
+
+client = create_client()
 
 
 SYSTEM_PROMPT = """
