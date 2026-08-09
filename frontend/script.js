@@ -109,7 +109,9 @@ function formatRelativeStatus(value) {
     return `${differenceSeconds}s ago`;
   }
 
-  const differenceMinutes = Math.floor(differenceSeconds / 60);
+  const differenceMinutes = Math.floor(
+    differenceSeconds / 60
+  );
 
   if (differenceMinutes < 60) {
     return `${differenceMinutes}m ago`;
@@ -131,16 +133,25 @@ function animateCounter(element, targetValue) {
     return;
   }
 
-  const startValue = Number(element.textContent) || 0;
+  const startValue =
+    Number(element.textContent) || 0;
+
   const duration = 650;
   const startTime = performance.now();
 
   function updateCounter(currentTime) {
-    const progress = Math.min((currentTime - startTime) / duration, 1);
-    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    const progress = Math.min(
+      (currentTime - startTime) / duration,
+      1
+    );
+
+    const easedProgress =
+      1 - Math.pow(1 - progress, 3);
 
     element.textContent = Math.round(
-      startValue + (numericTarget - startValue) * easedProgress
+      startValue +
+      (numericTarget - startValue) *
+      easedProgress
     );
 
     if (progress < 1) {
@@ -153,35 +164,52 @@ function animateCounter(element, targetValue) {
 
 
 function renderList(items) {
-  if (!Array.isArray(items) || items.length === 0) {
-    return "<li>No items were returned by the AI model.</li>";
+  if (
+    !Array.isArray(items) ||
+    items.length === 0
+  ) {
+    return (
+      "<li>No items were returned by the AI model.</li>"
+    );
   }
 
   return items
-    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .map(
+      item =>
+        `<li>${escapeHtml(item)}</li>`
+    )
     .join("");
 }
 
 
 function updateClock() {
-  const clock = document.getElementById("headerClock");
+  const clock =
+    document.getElementById("headerClock");
 
   if (!clock) {
     return;
   }
 
-  clock.textContent = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date());
+  clock.textContent =
+    new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(new Date());
 }
 
 
 function setPlatformState(state, text) {
-  const liveStatus = document.getElementById("liveStatus");
-  const platformStatus = document.getElementById("platformStatus");
-  const systemStatusText = document.getElementById("systemStatusText");
+  const liveStatus =
+    document.getElementById("liveStatus");
+
+  const platformStatus =
+    document.getElementById("platformStatus");
+
+  const systemStatusText =
+    document.getElementById(
+      "systemStatusText"
+    );
 
   liveStatus?.classList.remove(
     "is-live",
@@ -189,7 +217,9 @@ function setPlatformState(state, text) {
     "is-offline"
   );
 
-  liveStatus?.classList.add(`is-${state}`);
+  liveStatus?.classList.add(
+    `is-${state}`
+  );
 
   if (platformStatus) {
     platformStatus.textContent = text;
@@ -233,7 +263,9 @@ function renderSummary(summary) {
 ========================================================= */
 
 function getDeviceGlyph(deviceType) {
-  const normalizedType = String(deviceType || "").toLowerCase();
+  const normalizedType = String(
+    deviceType || ""
+  ).toLowerCase();
 
   if (normalizedType.includes("router")) {
     return "RT";
@@ -257,20 +289,30 @@ function getDeviceGlyph(deviceType) {
 
 function getDeviceHealth(device) {
   if (device.health) {
-    return String(device.health).toUpperCase();
+    return String(
+      device.health
+    ).toUpperCase();
   }
 
-  return device.status === "UP" ? "HEALTHY" : "DOWN";
+  return device.status === "UP"
+    ? "HEALTHY"
+    : "DOWN";
 }
 
 
 function renderDevices(devices) {
-  const table = document.getElementById("deviceTable");
-  const lastUpdatedLabel = document.getElementById(
-    "deviceLastUpdated"
-  );
+  const table =
+    document.getElementById("deviceTable");
 
-  if (!Array.isArray(devices) || devices.length === 0) {
+  const lastUpdatedLabel =
+    document.getElementById(
+      "deviceLastUpdated"
+    );
+
+  if (
+    !Array.isArray(devices) ||
+    devices.length === 0
+  ) {
     table.innerHTML = `
       <tr>
         <td colspan="8">
@@ -281,35 +323,58 @@ function renderDevices(devices) {
       </tr>
     `;
 
-    lastUpdatedLabel.textContent = "Awaiting collection";
+    lastUpdatedLabel.textContent =
+      "Awaiting collection";
+
     return;
   }
 
-  const latestTimestamp = devices.find(
-    device => device.last_updated
-  )?.last_updated;
+  const latestTimestamp =
+    devices.find(
+      device => device.last_updated
+    )?.last_updated;
 
-  lastUpdatedLabel.textContent = latestTimestamp
-    ? `Updated ${formatDateTime(latestTimestamp)}`
-    : "Live data loaded";
+  lastUpdatedLabel.textContent =
+    latestTimestamp
+      ? `Updated ${formatDateTime(
+          latestTimestamp
+        )}`
+      : "Live data loaded";
 
   table.innerHTML = devices
     .map(device => {
-      const status = String(device.status || "UNKNOWN").toUpperCase();
-      const health = getDeviceHealth(device);
+      const status = String(
+        device.status || "UNKNOWN"
+      ).toUpperCase();
 
-      const interfacesUp = Number(device.interfaces_up) || 0;
-      const interfacesDown = Number(device.interfaces_down) || 0;
+      const health =
+        getDeviceHealth(device);
+
+      const interfacesUp =
+        Number(device.interfaces_up) || 0;
+
+      const interfacesDown =
+        Number(device.interfaces_down) || 0;
+
       const interfacesAdminDown =
-        Number(device.interfaces_admin_down) || 0;
+        Number(
+          device.interfaces_admin_down
+        ) || 0;
 
       const totalInterfaces =
         Number(device.total_interfaces) ||
-        interfacesUp + interfacesDown + interfacesAdminDown;
+        interfacesUp +
+          interfacesDown +
+          interfacesAdminDown;
 
       const interfacePercentage =
         totalInterfaces > 0
-          ? Math.round((interfacesUp / totalInterfaces) * 100)
+          ? Math.round(
+              (
+                interfacesUp /
+                totalInterfaces
+              ) * 100
+            )
           : 0;
 
       return `
@@ -317,42 +382,66 @@ function renderDevices(devices) {
           <td>
             <div class="device-identity">
               <span class="device-glyph">
-                ${escapeHtml(getDeviceGlyph(device.type))}
+                ${escapeHtml(
+                  getDeviceGlyph(device.type)
+                )}
               </span>
 
               <span>
-                <strong>${escapeHtml(device.name)}</strong>
-                <small>ID ${escapeHtml(device.id ?? "—")}</small>
+                <strong>
+                  ${escapeHtml(device.name)}
+                </strong>
+
+                <small>
+                  ID ${escapeHtml(
+                    device.id ?? "—"
+                  )}
+                </small>
               </span>
             </div>
           </td>
 
           <td>
             <code class="ip-address">
-              ${escapeHtml(device.ip_address || "N/A")}
+              ${escapeHtml(
+                device.ip_address || "N/A"
+              )}
             </code>
           </td>
 
           <td>
-            ${escapeHtml(device.type || "Network Device")}
+            ${escapeHtml(
+              device.type ||
+              "Network Device"
+            )}
           </td>
 
           <td>
-            <span class="status-badge status-${safeClassName(status)}">
+            <span
+              class="status-badge status-${safeClassName(
+                status
+              )}"
+            >
               <i></i>
               ${escapeHtml(status)}
             </span>
           </td>
 
           <td>
-            <span class="health-badge health-${safeClassName(health)}">
+            <span
+              class="health-badge health-${safeClassName(
+                health
+              )}"
+            >
               ${escapeHtml(health)}
             </span>
           </td>
 
           <td>
             <span class="uptime-value">
-              ${escapeHtml(device.uptime || "Unknown")}
+              ${escapeHtml(
+                device.uptime || "Unknown"
+              )}
             </span>
           </td>
 
@@ -360,9 +449,15 @@ function renderDevices(devices) {
             <button
               type="button"
               class="interface-metric interface-button"
-              data-device-id="${escapeHtml(device.id)}"
-              data-device-name="${escapeHtml(device.name)}"
-              aria-label="View live interfaces for ${escapeHtml(device.name)}"
+              data-device-id="${escapeHtml(
+                device.id
+              )}"
+              data-device-name="${escapeHtml(
+                device.name
+              )}"
+              aria-label="View live interfaces for ${escapeHtml(
+                device.name
+              )}"
               title="View interface details"
             >
               <div class="interface-metric-top">
@@ -376,13 +471,18 @@ function renderDevices(devices) {
               </div>
 
               <div class="interface-track">
-                <span style="width: ${interfacePercentage}%"></span>
+                <span
+                  style="width: ${interfacePercentage}%"
+                ></span>
               </div>
 
               <span class="interface-view-label">
                 View interfaces
 
-                <svg viewBox="0 0 24 24" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </span>
@@ -391,7 +491,10 @@ function renderDevices(devices) {
 
           <td>
             <span class="software-version">
-              ${escapeHtml(device.software_version || "Unknown")}
+              ${escapeHtml(
+                device.software_version ||
+                "Unknown"
+              )}
             </span>
           </td>
         </tr>
@@ -400,23 +503,29 @@ function renderDevices(devices) {
     .join("");
 
   table
-    .querySelectorAll(".interface-button")
+    .querySelectorAll(
+      ".interface-button"
+    )
     .forEach(interfaceButton => {
-      interfaceButton.addEventListener("click", () => {
-        const deviceId = Number(
-          interfaceButton.dataset.deviceId
-        );
+      interfaceButton.addEventListener(
+        "click",
+        () => {
+          const deviceId = Number(
+            interfaceButton.dataset.deviceId
+          );
 
-        const deviceName =
-          interfaceButton.dataset.deviceName ||
-          "Network device";
+          const deviceName =
+            interfaceButton.dataset
+              .deviceName ||
+            "Network device";
 
-        openInterfaceDrawer(
-          deviceId,
-          deviceName,
-          interfaceButton
-        );
-      });
+          openInterfaceDrawer(
+            deviceId,
+            deviceName,
+            interfaceButton
+          );
+        }
+      );
     });
 }
 
@@ -425,13 +534,17 @@ function renderDevices(devices) {
    INTERFACE DETAILS
 ========================================================= */
 
-function getInterfaceState(interfaceData) {
+function getInterfaceState(
+  interfaceData
+) {
   const adminStatus = String(
-    interfaceData.admin_status || "UNKNOWN"
+    interfaceData.admin_status ||
+    "UNKNOWN"
   ).toUpperCase();
 
   const operStatus = String(
-    interfaceData.oper_status || "UNKNOWN"
+    interfaceData.oper_status ||
+    "UNKNOWN"
   ).toUpperCase();
 
   if (adminStatus === "DOWN") {
@@ -462,24 +575,33 @@ function getInterfaceState(interfaceData) {
 }
 
 
-function updateInterfaceSummary(interfaces) {
-  const summary = document.getElementById(
-    "interfaceDrawerSummary"
-  );
+function updateInterfaceSummary(
+  interfaces
+) {
+  const summary =
+    document.getElementById(
+      "interfaceDrawerSummary"
+    );
 
   if (!summary) {
     return;
   }
 
-  const totalCount = interfaces.length;
+  const totalCount =
+    interfaces.length;
 
-  const upCount = interfaces.filter(interfaceData => {
-    return String(
-      interfaceData.oper_status || ""
-    ).toUpperCase() === "UP";
-  }).length;
+  const upCount =
+    interfaces.filter(
+      interfaceData => {
+        return String(
+          interfaceData.oper_status ||
+          ""
+        ).toUpperCase() === "UP";
+      }
+    ).length;
 
-  const downCount = totalCount - upCount;
+  const downCount =
+    totalCount - upCount;
 
   summary.innerHTML = `
     <span>
@@ -500,16 +622,22 @@ function updateInterfaceSummary(interfaces) {
 }
 
 
-function renderInterfaceDetails(interfaces) {
-  const content = document.getElementById(
-    "interfaceDrawerContent"
-  );
+function renderInterfaceDetails(
+  interfaces
+) {
+  const content =
+    document.getElementById(
+      "interfaceDrawerContent"
+    );
 
   if (!content) {
     return;
   }
 
-  if (!Array.isArray(interfaces) || interfaces.length === 0) {
+  if (
+    !Array.isArray(interfaces) ||
+    interfaces.length === 0
+  ) {
     updateInterfaceSummary([]);
 
     content.innerHTML = `
@@ -521,22 +649,31 @@ function renderInterfaceDetails(interfaces) {
     return;
   }
 
-  updateInterfaceSummary(interfaces);
+  updateInterfaceSummary(
+    interfaces
+  );
 
   content.innerHTML = `
     <div class="interface-detail-list">
       ${interfaces
         .map(interfaceData => {
-          const state = getInterfaceState(interfaceData);
+          const state =
+            getInterfaceState(
+              interfaceData
+            );
 
           const interfaceName =
             interfaceData.name ||
             interfaceData.description ||
-            `Interface ${interfaceData.index ?? "—"}`;
+            `Interface ${
+              interfaceData.index ??
+              "—"
+            }`;
 
           const description =
             interfaceData.description &&
-            interfaceData.description !== interfaceName
+            interfaceData.description !==
+              interfaceName
               ? interfaceData.description
               : "No additional description";
 
@@ -544,16 +681,23 @@ function renderInterfaceDetails(interfaces) {
             <article class="interface-detail-card">
               <div class="interface-detail-main">
                 <span class="interface-index">
-                  ${escapeHtml(interfaceData.index ?? "—")}
+                  ${escapeHtml(
+                    interfaceData.index ??
+                    "—"
+                  )}
                 </span>
 
                 <div>
                   <h3>
-                    ${escapeHtml(interfaceName)}
+                    ${escapeHtml(
+                      interfaceName
+                    )}
                   </h3>
 
                   <p>
-                    ${escapeHtml(description)}
+                    ${escapeHtml(
+                      description
+                    )}
                   </p>
                 </div>
               </div>
@@ -565,19 +709,23 @@ function renderInterfaceDetails(interfaces) {
                   <strong>
                     ${escapeHtml(
                       String(
-                        interfaceData.admin_status || "UNKNOWN"
+                        interfaceData.admin_status ||
+                        "UNKNOWN"
                       ).toUpperCase()
                     )}
                   </strong>
                 </span>
 
                 <span>
-                  <small>Operational</small>
+                  <small>
+                    Operational
+                  </small>
 
                   <strong>
                     ${escapeHtml(
                       String(
-                        interfaceData.oper_status || "UNKNOWN"
+                        interfaceData.oper_status ||
+                        "UNKNOWN"
                       ).toUpperCase()
                     )}
                   </strong>
@@ -589,7 +737,9 @@ function renderInterfaceDetails(interfaces) {
                   )}"
                 >
                   <i></i>
-                  ${escapeHtml(state.label)}
+                  ${escapeHtml(
+                    state.label
+                  )}
                 </span>
               </div>
             </article>
@@ -606,25 +756,30 @@ async function openInterfaceDrawer(
   deviceName,
   triggerElement
 ) {
-  const drawer = document.getElementById(
-    "interfaceDrawer"
-  );
+  const drawer =
+    document.getElementById(
+      "interfaceDrawer"
+    );
 
-  const backdrop = document.getElementById(
-    "interfaceDrawerBackdrop"
-  );
+  const backdrop =
+    document.getElementById(
+      "interfaceDrawerBackdrop"
+    );
 
-  const title = document.getElementById(
-    "interfaceDrawerTitle"
-  );
+  const title =
+    document.getElementById(
+      "interfaceDrawerTitle"
+    );
 
-  const deviceLabel = document.getElementById(
-    "interfaceDrawerDevice"
-  );
+  const deviceLabel =
+    document.getElementById(
+      "interfaceDrawerDevice"
+    );
 
-  const content = document.getElementById(
-    "interfaceDrawerContent"
-  );
+  const content =
+    document.getElementById(
+      "interfaceDrawerContent"
+    );
 
   if (
     !drawer ||
@@ -669,25 +824,41 @@ async function openInterfaceDrawer(
     "interface-drawer-open"
   );
 
-  window.requestAnimationFrame(() => {
-    backdrop.classList.add("is-visible");
-    drawer.classList.add("is-open");
-  });
+  window.requestAnimationFrame(
+    () => {
+      backdrop.classList.add(
+        "is-visible"
+      );
+
+      drawer.classList.add(
+        "is-open"
+      );
+    }
+  );
 
   document
-    .getElementById("interfaceDrawerClose")
+    .getElementById(
+      "interfaceDrawerClose"
+    )
     ?.focus();
 
   try {
-    const interfaces = await fetchJson(
-      `/devices/${encodeURIComponent(deviceId)}/interfaces`
-    );
+    const interfaces =
+      await fetchJson(
+        `/devices/${encodeURIComponent(
+          deviceId
+        )}/interfaces`
+      );
 
-    renderInterfaceDetails(interfaces);
+    renderInterfaceDetails(
+      interfaces
+    );
   } catch (error) {
     content.innerHTML = `
       <div class="error-state interface-drawer-error">
-        <div class="error-state-icon">!</div>
+        <div class="error-state-icon">
+          !
+        </div>
 
         <div>
           <strong>
@@ -695,7 +866,9 @@ async function openInterfaceDrawer(
           </strong>
 
           <p>
-            ${escapeHtml(error.message)}
+            ${escapeHtml(
+              error.message
+            )}
           </p>
         </div>
       </div>
@@ -705,20 +878,27 @@ async function openInterfaceDrawer(
 
 
 function closeInterfaceDrawer() {
-  const drawer = document.getElementById(
-    "interfaceDrawer"
-  );
+  const drawer =
+    document.getElementById(
+      "interfaceDrawer"
+    );
 
-  const backdrop = document.getElementById(
-    "interfaceDrawerBackdrop"
-  );
+  const backdrop =
+    document.getElementById(
+      "interfaceDrawerBackdrop"
+    );
 
   if (!drawer || !backdrop) {
     return;
   }
 
-  drawer.classList.remove("is-open");
-  backdrop.classList.remove("is-visible");
+  drawer.classList.remove(
+    "is-open"
+  );
+
+  backdrop.classList.remove(
+    "is-visible"
+  );
 
   drawer.setAttribute(
     "aria-hidden",
@@ -733,8 +913,11 @@ function closeInterfaceDrawer() {
     backdrop.hidden = true;
   }, 240);
 
-  lastFocusedInterfaceControl?.focus();
-  lastFocusedInterfaceControl = null;
+  lastFocusedInterfaceControl
+    ?.focus();
+
+  lastFocusedInterfaceControl =
+    null;
 }
 
 
@@ -743,8 +926,13 @@ function closeInterfaceDrawer() {
 ========================================================= */
 
 function renderAlerts(alerts) {
-  const alertBox = document.getElementById("alerts");
-  const queueCount = document.getElementById("queueCount");
+  const alertBox =
+    document.getElementById("alerts");
+
+  const queueCount =
+    document.getElementById(
+      "queueCount"
+    );
 
   const alertCount =
     Array.isArray(alerts)
@@ -773,7 +961,9 @@ function renderAlerts(alerts) {
         </div>
 
         <div>
-          <h3>All systems nominal</h3>
+          <h3>
+            All systems nominal
+          </h3>
 
           <p>
             NOCPilot has not detected any active
@@ -786,81 +976,110 @@ function renderAlerts(alerts) {
     return;
   }
 
-  alerts.forEach((alert, index) => {
-    const severity = String(
-      alert.severity || "UNKNOWN"
-    ).toUpperCase();
+  alerts.forEach(
+    (alert, index) => {
+      const severity = String(
+        alert.severity || "UNKNOWN"
+      ).toUpperCase();
 
-    const alertButton =
-      document.createElement("button");
+      const alertButton =
+        document.createElement(
+          "button"
+        );
 
-    alertButton.type = "button";
+      alertButton.type =
+        "button";
 
-    alertButton.className =
-      `alert-item alert-${safeClassName(severity)}`;
+      alertButton.className =
+        `alert-item alert-${safeClassName(
+          severity
+        )}`;
 
-    alertButton.style.setProperty(
-      "--alert-delay",
-      `${index * 70}ms`
-    );
+      alertButton.style.setProperty(
+        "--alert-delay",
+        `${index * 70}ms`
+      );
 
-    alertButton.innerHTML = `
-      <span class="alert-severity-line"></span>
+      alertButton.innerHTML = `
+        <span class="alert-severity-line"></span>
 
-      <span class="alert-main">
-        <span class="alert-topline">
-          <strong>
-            ${escapeHtml(alert.device_name)}
-            <span>·</span>
-            ${escapeHtml(alert.alert_type)}
-          </strong>
+        <span class="alert-main">
+          <span class="alert-topline">
+            <strong>
+              ${escapeHtml(
+                alert.device_name
+              )}
 
-          <span
-            class="severity-badge severity-${safeClassName(
-              severity
-            )}"
-          >
-            ${escapeHtml(severity)}
+              <span>·</span>
+
+              ${escapeHtml(
+                alert.alert_type
+              )}
+            </strong>
+
+            <span
+              class="severity-badge severity-${safeClassName(
+                severity
+              )}"
+            >
+              ${escapeHtml(
+                severity
+              )}
+            </span>
           </span>
-        </span>
 
-        <span class="alert-description">
-          ${escapeHtml(alert.description)}
-        </span>
-
-        <span class="alert-meta">
-          <span>
-            <i></i>
-            ${escapeHtml(alert.status || "OPEN")}
-          </span>
-
-          <time>
+          <span class="alert-description">
             ${escapeHtml(
-              formatDateTime(alert.created_at)
+              alert.description
             )}
-          </time>
+          </span>
+
+          <span class="alert-meta">
+            <span>
+              <i></i>
+
+              ${escapeHtml(
+                alert.status ||
+                "OPEN"
+              )}
+            </span>
+
+            <time>
+              ${escapeHtml(
+                formatDateTime(
+                  alert.created_at
+                )
+              )}
+            </time>
+          </span>
         </span>
-      </span>
 
-      <span class="alert-action" aria-hidden="true">
-        Analyze
+        <span
+          class="alert-action"
+          aria-hidden="true"
+        >
+          Analyze
 
-        <svg viewBox="0 0 24 24">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </span>
-    `;
+          <svg viewBox="0 0 24 24">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </span>
+      `;
 
-    alertButton.addEventListener(
-      "click",
-      () => explainAlert(
-        alert.id,
+      alertButton.addEventListener(
+        "click",
+        () =>
+          explainAlert(
+            alert.id,
+            alertButton
+          )
+      );
+
+      alertBox.appendChild(
         alertButton
-      )
-    );
-
-    alertBox.appendChild(alertButton);
-  });
+      );
+    }
+  );
 }
 
 
@@ -879,14 +1098,18 @@ function renderSystemHealth(health) {
     collector.last_error;
 
   document
-    .getElementById("apiStatusValue")
+    .getElementById(
+      "apiStatusValue"
+    )
     .textContent =
       health.status === "healthy"
         ? "Operational"
         : "Degraded";
 
   document
-    .getElementById("pollIntervalValue")
+    .getElementById(
+      "pollIntervalValue"
+    )
     .textContent =
       health.poll_interval_seconds
         ? `${health.poll_interval_seconds}s`
@@ -899,12 +1122,16 @@ function renderSystemHealth(health) {
     );
 
     document
-      .getElementById("collectorStatus")
+      .getElementById(
+        "collectorStatus"
+      )
       .textContent =
         "Collection error";
 
     document
-      .getElementById("collectorStateValue")
+      .getElementById(
+        "collectorStateValue"
+      )
       .textContent =
         "Attention required";
   } else if (collectorRunning) {
@@ -914,12 +1141,16 @@ function renderSystemHealth(health) {
     );
 
     document
-      .getElementById("collectorStatus")
+      .getElementById(
+        "collectorStatus"
+      )
       .textContent =
         "Collecting now";
 
     document
-      .getElementById("collectorStateValue")
+      .getElementById(
+        "collectorStateValue"
+      )
       .textContent =
         "Active collection";
   } else {
@@ -929,12 +1160,16 @@ function renderSystemHealth(health) {
     );
 
     document
-      .getElementById("collectorStatus")
+      .getElementById(
+        "collectorStatus"
+      )
       .textContent =
         "Monitoring";
 
     document
-      .getElementById("collectorStateValue")
+      .getElementById(
+        "collectorStateValue"
+      )
       .textContent =
         "Standing by";
   }
@@ -943,9 +1178,13 @@ function renderSystemHealth(health) {
     collector.last_success;
 
   document
-    .getElementById("lastCollection")
+    .getElementById(
+      "lastCollection"
+    )
     .textContent =
-      formatRelativeStatus(lastSuccess);
+      formatRelativeStatus(
+        lastSuccess
+      );
 }
 
 
@@ -954,12 +1193,13 @@ function renderSystemHealth(health) {
 ========================================================= */
 
 async function refreshDashboard() {
-  const results = await Promise.allSettled([
-    fetchJson("/summary"),
-    fetchJson("/devices"),
-    fetchJson("/alerts"),
-    fetchJson("/health"),
-  ]);
+  const results =
+    await Promise.allSettled([
+      fetchJson("/summary"),
+      fetchJson("/devices"),
+      fetchJson("/alerts"),
+      fetchJson("/health"),
+    ]);
 
   const [
     summaryResult,
@@ -970,25 +1210,38 @@ async function refreshDashboard() {
 
   let failedRequests = 0;
 
-  if (summaryResult.status === "fulfilled") {
-    renderSummary(summaryResult.value);
+  if (
+    summaryResult.status ===
+    "fulfilled"
+  ) {
+    renderSummary(
+      summaryResult.value
+    );
   } else {
     failedRequests += 1;
   }
 
-  if (devicesResult.status === "fulfilled") {
-    renderDevices(devicesResult.value);
+  if (
+    devicesResult.status ===
+    "fulfilled"
+  ) {
+    renderDevices(
+      devicesResult.value
+    );
   } else {
     failedRequests += 1;
 
     document
-      .getElementById("deviceTable")
+      .getElementById(
+        "deviceTable"
+      )
       .innerHTML = `
         <tr>
           <td colspan="8">
             <div class="error-state compact">
               ${escapeHtml(
-                devicesResult.reason.message
+                devicesResult.reason
+                  .message
               )}
             </div>
           </td>
@@ -996,48 +1249,71 @@ async function refreshDashboard() {
       `;
   }
 
-  if (alertsResult.status === "fulfilled") {
-    renderAlerts(alertsResult.value);
+  if (
+    alertsResult.status ===
+    "fulfilled"
+  ) {
+    renderAlerts(
+      alertsResult.value
+    );
   } else {
     failedRequests += 1;
 
     document
-      .getElementById("alerts")
+      .getElementById(
+        "alerts"
+      )
       .innerHTML = `
         <div class="error-state">
           ${escapeHtml(
-            alertsResult.reason.message
+            alertsResult.reason
+              .message
           )}
         </div>
       `;
   }
 
-  if (healthResult.status === "fulfilled") {
-    renderSystemHealth(healthResult.value);
+  if (
+    healthResult.status ===
+    "fulfilled"
+  ) {
+    renderSystemHealth(
+      healthResult.value
+    );
   } else {
     failedRequests += 1;
   }
 
   const syncTime =
-    new Intl.DateTimeFormat(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-    }).format(new Date());
+    new Intl.DateTimeFormat(
+      undefined,
+      {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      }
+    ).format(new Date());
 
   document
-    .getElementById("dashboardSyncValue")
+    .getElementById(
+      "dashboardSyncValue"
+    )
     .textContent =
       syncTime;
 
-  if (failedRequests === results.length) {
+  if (
+    failedRequests ===
+    results.length
+  ) {
     setPlatformState(
       "offline",
       "API unavailable"
     );
 
     document
-      .getElementById("collectorStatus")
+      .getElementById(
+        "collectorStatus"
+      )
       .textContent =
         "Disconnected";
   } else if (failedRequests > 0) {
@@ -1053,13 +1329,18 @@ async function refreshDashboard() {
    AI ANALYSIS
 ========================================================= */
 
-function setSelectedAlert(selectedAlert) {
+function setSelectedAlert(
+  selectedAlert
+) {
   document
-    .querySelectorAll(".alert-item")
+    .querySelectorAll(
+      ".alert-item"
+    )
     .forEach(alertItem => {
       alertItem.classList.toggle(
         "is-selected",
-        alertItem === selectedAlert
+        alertItem ===
+          selectedAlert
       );
     });
 }
@@ -1070,19 +1351,28 @@ async function explainAlert(
   selectedAlert
 ) {
   const aiBox =
-    document.getElementById("aiBox");
+    document.getElementById(
+      "aiBox"
+    );
 
   const aiSection =
-    document.getElementById("aiSection");
+    document.getElementById(
+      "aiSection"
+    );
 
-  setSelectedAlert(selectedAlert);
+  setSelectedAlert(
+    selectedAlert
+  );
 
   const requestId =
     ++activeAiRequest;
 
   aiBox.innerHTML = `
     <div class="ai-loading-container">
-      <div class="ai-loader" aria-hidden="true">
+      <div
+        class="ai-loader"
+        aria-hidden="true"
+      >
         <div class="ai-orbit ai-orbit-one"></div>
         <div class="ai-orbit ai-orbit-two"></div>
         <div class="ai-orbit ai-orbit-three"></div>
@@ -1113,7 +1403,10 @@ async function explainAlert(
         base and generating an evidence-guided response.
       </p>
 
-      <div class="loading-steps" aria-hidden="true">
+      <div
+        class="loading-steps"
+        aria-hidden="true"
+      >
         <span>
           <i></i>
           Retrieving documentation
@@ -1130,7 +1423,10 @@ async function explainAlert(
         </span>
       </div>
 
-      <div class="ai-progress-track" aria-hidden="true">
+      <div
+        class="ai-progress-track"
+        aria-hidden="true"
+      >
         <span></span>
       </div>
     </div>
@@ -1142,18 +1438,24 @@ async function explainAlert(
   });
 
   try {
-    const data = await fetchJson(
-      `/ai-explain/${alertId}`
-    );
+    const data =
+      await fetchJson(
+        `/ai-explain/${alertId}`
+      );
 
-    if (requestId !== activeAiRequest) {
+    if (
+      requestId !==
+      activeAiRequest
+    ) {
       return;
     }
 
-    const alert = data.alert || {};
+    const alert =
+      data.alert || {};
 
     const severity = String(
-      alert.severity || "UNKNOWN"
+      alert.severity ||
+      "UNKNOWN"
     ).toUpperCase();
 
     aiBox.innerHTML = `
@@ -1175,11 +1477,15 @@ async function explainAlert(
               </p>
 
               <h3>
-                ${escapeHtml(alert.device_name)}
+                ${escapeHtml(
+                  alert.device_name
+                )}
               </h3>
 
               <span>
-                ${escapeHtml(alert.alert_type)}
+                ${escapeHtml(
+                  alert.alert_type
+                )}
               </span>
             </div>
           </div>
@@ -1195,7 +1501,9 @@ async function explainAlert(
                 severity
               )}"
             >
-              ${escapeHtml(severity)}
+              ${escapeHtml(
+                severity
+              )}
             </span>
           </div>
         </div>
@@ -1208,7 +1516,9 @@ async function explainAlert(
             </div>
 
             <p>
-              ${escapeHtml(data.ai_summary)}
+              ${escapeHtml(
+                data.ai_summary
+              )}
             </p>
           </section>
 
@@ -1219,7 +1529,9 @@ async function explainAlert(
             </div>
 
             <ul>
-              ${renderList(data.possible_causes)}
+              ${renderList(
+                data.possible_causes
+              )}
             </ul>
           </section>
 
@@ -1230,21 +1542,27 @@ async function explainAlert(
             </div>
 
             <ul class="action-list">
-              ${renderList(data.next_steps)}
+              ${renderList(
+                data.next_steps
+              )}
             </ul>
           </section>
 
           <section class="ai-card ticket-card">
             <div class="ai-card-heading">
               <span>04</span>
-              <h4>Generated Ticket Note</h4>
+              <h4>
+                Generated Ticket Note
+              </h4>
             </div>
 
             <div
               class="ticket-note"
               id="ticketNote"
             >
-              ${escapeHtml(data.ticket_note)}
+              ${escapeHtml(
+                data.ticket_note
+              )}
             </div>
 
             <div class="ticket-actions">
@@ -1283,13 +1601,18 @@ async function explainAlert(
     `;
 
     document
-      .getElementById("copyTicketButton")
+      .getElementById(
+        "copyTicketButton"
+      )
       .addEventListener(
         "click",
         copyTicketNote
       );
   } catch (error) {
-    if (requestId !== activeAiRequest) {
+    if (
+      requestId !==
+      activeAiRequest
+    ) {
       return;
     }
 
@@ -1305,7 +1628,9 @@ async function explainAlert(
           </strong>
 
           <p>
-            ${escapeHtml(error.message)}
+            ${escapeHtml(
+              error.message
+            )}
           </p>
         </div>
       </div>
@@ -1316,10 +1641,14 @@ async function explainAlert(
 
 async function copyTicketNote() {
   const ticketNote =
-    document.getElementById("ticketNote");
+    document.getElementById(
+      "ticketNote"
+    );
 
   const message =
-    document.getElementById("copyMessage");
+    document.getElementById(
+      "copyMessage"
+    );
 
   if (!ticketNote || !message) {
     return;
@@ -1351,31 +1680,663 @@ async function copyTicketNote() {
 
 
 /* =========================================================
+   AI SETTINGS
+========================================================= */
+
+function setAiSettingsMessage(
+  message,
+  state = ""
+) {
+  const messageBox =
+    document.getElementById(
+      "aiSettingsMessage"
+    );
+
+  if (!messageBox) {
+    return;
+  }
+
+  messageBox.textContent =
+    message;
+
+  messageBox.className =
+    "settings-message";
+
+  if (state) {
+    messageBox.classList.add(
+      `is-${state}`
+    );
+  }
+}
+
+
+function setAiSettingsStatus(
+  state,
+  text
+) {
+  const badge =
+    document.getElementById(
+      "aiSettingsStatusBadge"
+    );
+
+  if (!badge) {
+    return;
+  }
+
+  badge.className =
+    "settings-status-badge";
+
+  if (state) {
+    badge.classList.add(
+      `is-${state}`
+    );
+  }
+
+  badge.innerHTML = `
+    <i></i>
+    ${escapeHtml(text)}
+  `;
+}
+
+
+function setSettingsButtonBusy(
+  button,
+  isBusy,
+  busyText = "Working..."
+) {
+  if (!button) {
+    return;
+  }
+
+  if (isBusy) {
+    button.dataset.originalText =
+      button.textContent.trim();
+
+    button.textContent =
+      busyText;
+
+    button.disabled = true;
+
+    button.classList.add(
+      "is-busy"
+    );
+
+    return;
+  }
+
+  button.textContent =
+    button.dataset.originalText ||
+    button.textContent;
+
+  button.disabled = false;
+
+  button.classList.remove(
+    "is-busy"
+  );
+}
+
+
+function populateAiSettingsForm(
+  settings
+) {
+  document
+    .getElementById(
+      "aiProvider"
+    )
+    .value =
+      settings.provider ||
+      "openai_compatible";
+
+  document
+    .getElementById(
+      "aiBaseUrl"
+    )
+    .value =
+      settings.base_url || "";
+
+  document
+    .getElementById(
+      "aiModel"
+    )
+    .value =
+      settings.model || "";
+
+  document
+    .getElementById(
+      "aiTimeout"
+    )
+    .value =
+      settings.timeout_seconds ??
+      60;
+
+  document
+    .getElementById(
+      "aiUseRag"
+    )
+    .checked =
+      Boolean(
+        settings.use_rag
+      );
+
+  const apiKeyInput =
+    document.getElementById(
+      "aiApiKey"
+    );
+
+  const apiKeyState =
+    document.getElementById(
+      "aiApiKeyState"
+    );
+
+  apiKeyInput.value = "";
+
+  if (
+    settings.api_key_configured
+  ) {
+    apiKeyInput.placeholder =
+      "Leave blank to keep the current key";
+
+    apiKeyState.textContent =
+      "An API key is configured. Enter a new key only to replace it.";
+  } else {
+    apiKeyInput.placeholder =
+      "Enter an API key or use 'unused' for a local server";
+
+    apiKeyState.textContent =
+      "No API key is currently configured.";
+  }
+
+  document
+    .getElementById(
+      "currentAiEndpoint"
+    )
+    .textContent =
+      `${
+        settings.base_url ||
+        "Not configured"
+      } · ${
+        settings.model ||
+        "No model selected"
+      }`;
+}
+
+
+function readAiSettingsForm() {
+  const timeoutSeconds = Number(
+    document
+      .getElementById(
+        "aiTimeout"
+      )
+      .value
+  );
+
+  const baseUrl =
+    document
+      .getElementById(
+        "aiBaseUrl"
+      )
+      .value
+      .trim();
+
+  const model =
+    document
+      .getElementById(
+        "aiModel"
+      )
+      .value
+      .trim();
+
+  if (!baseUrl) {
+    throw new Error(
+      "Enter the AI server base URL."
+    );
+  }
+
+  if (!model) {
+    throw new Error(
+      "Enter the model name."
+    );
+  }
+
+  if (
+    !Number.isInteger(
+      timeoutSeconds
+    ) ||
+    timeoutSeconds < 5 ||
+    timeoutSeconds > 300
+  ) {
+    throw new Error(
+      "The timeout must be a whole number between 5 and 300 seconds."
+    );
+  }
+
+  return {
+    provider:
+      document
+        .getElementById(
+          "aiProvider"
+        )
+        .value,
+
+    base_url:
+      baseUrl,
+
+    model,
+
+    api_key:
+      document
+        .getElementById(
+          "aiApiKey"
+        )
+        .value,
+
+    timeout_seconds:
+      timeoutSeconds,
+
+    use_rag:
+      document
+        .getElementById(
+          "aiUseRag"
+        )
+        .checked,
+  };
+}
+
+
+async function loadAiSettings() {
+  setAiSettingsStatus(
+    "loading",
+    "Loading configuration"
+  );
+
+  setAiSettingsMessage("");
+
+  try {
+    const settings =
+      await fetchJson(
+        "/settings/ai"
+      );
+
+    populateAiSettingsForm(
+      settings
+    );
+
+    setAiSettingsStatus(
+      "ready",
+      "Configuration loaded"
+    );
+  } catch (error) {
+    setAiSettingsStatus(
+      "error",
+      "Settings unavailable"
+    );
+
+    setAiSettingsMessage(
+      error.message,
+      "error"
+    );
+  }
+}
+
+
+async function saveAiSettings({
+  showSuccessMessage = true,
+  button = null,
+} = {}) {
+  const settings =
+    readAiSettingsForm();
+
+  setSettingsButtonBusy(
+    button,
+    true,
+    "Saving..."
+  );
+
+  setAiSettingsMessage(
+    "Saving AI configuration...",
+    "working"
+  );
+
+  try {
+    const savedSettings =
+      await fetchJson(
+        "/settings/ai",
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            settings
+          ),
+        }
+      );
+
+    populateAiSettingsForm(
+      savedSettings
+    );
+
+    setAiSettingsStatus(
+      "ready",
+      "Configuration saved"
+    );
+
+    if (showSuccessMessage) {
+      setAiSettingsMessage(
+        "AI settings saved. New AI requests will use this configuration.",
+        "success"
+      );
+    }
+
+    return savedSettings;
+  } catch (error) {
+    setAiSettingsStatus(
+      "error",
+      "Save failed"
+    );
+
+    setAiSettingsMessage(
+      error.message,
+      "error"
+    );
+
+    throw error;
+  } finally {
+    setSettingsButtonBusy(
+      button,
+      false
+    );
+  }
+}
+
+
+async function handleAiSettingsSubmit(
+  event
+) {
+  event.preventDefault();
+
+  const button =
+    document.getElementById(
+      "saveAiSettingsButton"
+    );
+
+  try {
+    await saveAiSettings({
+      button,
+    });
+  } catch {
+    // The form already displays the error.
+  }
+}
+
+
+async function testAiConnection() {
+  const button =
+    document.getElementById(
+      "testAiConnectionButton"
+    );
+
+  setSettingsButtonBusy(
+    button,
+    true,
+    "Saving & testing..."
+  );
+
+  try {
+    await saveAiSettings({
+      showSuccessMessage: false,
+    });
+
+    setAiSettingsStatus(
+      "testing",
+      "Testing connection"
+    );
+
+    setAiSettingsMessage(
+      "Settings saved. Contacting the configured AI server...",
+      "working"
+    );
+
+    const result =
+      await fetchJson(
+        "/settings/ai/test",
+        {
+          method: "POST",
+        }
+      );
+
+    setAiSettingsStatus(
+      "connected",
+      "AI connected"
+    );
+
+    setAiSettingsMessage(
+      result.message ||
+      `Connection successful using ${result.model}.`,
+      "success"
+    );
+  } catch (error) {
+    setAiSettingsStatus(
+      "error",
+      "Connection failed"
+    );
+
+    setAiSettingsMessage(
+      `Settings were saved, but the connection test failed: ${error.message}`,
+      "error"
+    );
+  } finally {
+    setSettingsButtonBusy(
+      button,
+      false
+    );
+  }
+}
+
+
+async function restoreAiSettings() {
+  const button =
+    document.getElementById(
+      "restoreAiSettingsButton"
+    );
+
+  const shouldRestore =
+    window.confirm(
+      "Restore the original NOCPilot AI endpoint and model?"
+    );
+
+  if (!shouldRestore) {
+    return;
+  }
+
+  setSettingsButtonBusy(
+    button,
+    true,
+    "Restoring..."
+  );
+
+  setAiSettingsMessage(
+    "Restoring the default AI configuration...",
+    "working"
+  );
+
+  try {
+    const settings =
+      await fetchJson(
+        "/settings/ai/restore",
+        {
+          method: "POST",
+        }
+      );
+
+    populateAiSettingsForm(
+      settings
+    );
+
+    setAiSettingsStatus(
+      "ready",
+      "Defaults restored"
+    );
+
+    setAiSettingsMessage(
+      "The original NOCPilot AI settings have been restored.",
+      "success"
+    );
+  } catch (error) {
+    setAiSettingsStatus(
+      "error",
+      "Restore failed"
+    );
+
+    setAiSettingsMessage(
+      error.message,
+      "error"
+    );
+  } finally {
+    setSettingsButtonBusy(
+      button,
+      false
+    );
+  }
+}
+
+
+function toggleAiApiKeyVisibility() {
+  const input =
+    document.getElementById(
+      "aiApiKey"
+    );
+
+  const button =
+    document.getElementById(
+      "toggleAiApiKey"
+    );
+
+  const shouldShow =
+    input.type === "password";
+
+  input.type =
+    shouldShow
+      ? "text"
+      : "password";
+
+  button.textContent =
+    shouldShow
+      ? "Hide"
+      : "Show";
+
+  button.setAttribute(
+    "aria-label",
+    shouldShow
+      ? "Hide API key"
+      : "Show API key"
+  );
+}
+
+/* =========================================================
+   PAGE NAVIGATION
+========================================================= */
+
+function openSettingsView(event) {
+  if (event) {
+    event.preventDefault();
+  }
+
+  document.body.classList.add(
+    "settings-view-active"
+  );
+
+  document
+    .querySelectorAll(".navbar a")
+    .forEach(link => {
+      link.classList.remove("is-active");
+    });
+
+  document
+    .getElementById("settingsNavLink")
+    ?.classList.add("is-active");
+
+  loadAiSettings();
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}
+
+
+function closeSettingsView() {
+  document.body.classList.remove(
+    "settings-view-active"
+  );
+
+  document
+    .getElementById("settingsNavLink")
+    ?.classList.remove("is-active");
+}
+
+/* =========================================================
    AUTHENTICATION AND INITIALIZATION
 ========================================================= */
 
 function logout() {
-  localStorage.removeItem("isLoggedIn");
+  localStorage.removeItem(
+    "isLoggedIn"
+  );
 }
 
 
 function initializeDashboard() {
   document
-    .getElementById("logoutLink")
+    .getElementById(
+      "logoutLink"
+    )
     .addEventListener(
       "click",
       logout
     );
+    
+  document
+    .getElementById("settingsNavLink")
+    ?.addEventListener(
+      "click",
+      openSettingsView
+    );
 
   document
-    .getElementById("interfaceDrawerClose")
+    .querySelectorAll(
+      '.navbar a:not(#settingsNavLink)'
+    )
+    .forEach(link => {
+      link.addEventListener(
+        "click",
+        closeSettingsView
+      );
+    });
+
+  document
+    .querySelector(".brand")
+    ?.addEventListener(
+      "click",
+      closeSettingsView
+    );
+
+  document
+    .getElementById(
+      "interfaceDrawerClose"
+    )
     ?.addEventListener(
       "click",
       closeInterfaceDrawer
     );
 
   document
-    .getElementById("interfaceDrawerBackdrop")
+    .getElementById(
+      "interfaceDrawerBackdrop"
+    )
     ?.addEventListener(
       "click",
       closeInterfaceDrawer
@@ -1384,11 +2345,51 @@ function initializeDashboard() {
   document.addEventListener(
     "keydown",
     event => {
-      if (event.key === "Escape") {
+      if (
+        event.key === "Escape"
+      ) {
         closeInterfaceDrawer();
       }
     }
   );
+
+  document
+    .getElementById(
+      "aiSettingsForm"
+    )
+    ?.addEventListener(
+      "submit",
+      handleAiSettingsSubmit
+    );
+
+  document
+    .getElementById(
+      "testAiConnectionButton"
+    )
+    ?.addEventListener(
+      "click",
+      testAiConnection
+    );
+
+  document
+    .getElementById(
+      "restoreAiSettingsButton"
+    )
+    ?.addEventListener(
+      "click",
+      restoreAiSettings
+    );
+
+  document
+    .getElementById(
+      "toggleAiApiKey"
+    )
+    ?.addEventListener(
+      "click",
+      toggleAiApiKeyVisibility
+    );
+
+  loadAiSettings();
 
   updateClock();
 
@@ -1399,10 +2400,11 @@ function initializeDashboard() {
 
   refreshDashboard();
 
-  refreshTimer = window.setInterval(
-    refreshDashboard,
-    DASHBOARD_REFRESH_INTERVAL_MS
-  );
+  refreshTimer =
+    window.setInterval(
+      refreshDashboard,
+      DASHBOARD_REFRESH_INTERVAL_MS
+    );
 
   document.addEventListener(
     "visibilitychange",

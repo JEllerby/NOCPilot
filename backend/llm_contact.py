@@ -1,40 +1,6 @@
-from openai import OpenAI
-import json
-from pathlib import Path
+from __future__ import annotations
 
-""" When calling generate_explanation use the following format:
-
-    llm_result = generate_explanation(
-        query_text=retrieval_result["query"],
-        retrieved_context=retrieval_result["context"]
-    )
-
-    This assumes that the output of retrieval.py has been returned as a
-    dictionary with the keys query and context.
-"""
-
-CONFIG_FILE = Path(__file__).resolve().parent / "config.json"
-
-
-
-
-def load_settings():
-    if not CONFIG_FILE.exists():
-        raise FileNotFoundError(f"Missing configuration file: {CONFIG_FILE}")
-
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def create_client():
-    settings = load_settings()
-
-    return OpenAI(
-        base_url=settings["llm_endpoint"],
-        api_key=settings["api_key"]
-    )
-
-client = create_client()
+from .ai.client import create_ai_client
 
 
 SYSTEM_PROMPT = """
@@ -63,30 +29,68 @@ Keep the response clear, practical, and focused on network troubleshooting.
 """
 
 
-def generate_explanation(query_text: str, retrieved_context: str) -> dict:
-    user_prompt = f"""
+def generate_explanation(
+    query_text: str,
+    retrieved_context: str,
+) -> dict[str, str]:
+    """
+    Generate troubleshooting guidance using the currently selected AI server.
+
+    Settings are loaded for every request, so the AI endpoint and model can
+    be changed without restarting NOCPilot.
+    """
+
+    try:
+        client, settings = create_ai_client()
+
+        if settings["use_rag"]:
+            context_for_prompt = retrieved_context
+        else:
+            context_for_prompt = (
+                "RAG documentation retrieval is disabled in AI settings."
+            )
+
+        user_prompt = f"""
 Alert / query:
 {query_text}
 
 Retrieved documentation:
-{retrieved_context}
+{context_for_prompt}
 """
 
-    try:
         response = client.chat.completions.create(
-            model="qwen/qwen3-8b",
+            model=settings["model"],
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ]
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
         )
 
-        answer = response.choices[0].message.content
+        answer = str(
+            response.choices[0].message.content or ""
+        ).strip()
 
-    except Exception:
-        answer = "The LLM model is not loaded or could not be contacted."
+        if not answer:
+            raise RuntimeError(
+                "The configured AI model returned an empty response."
+            )
+
+    except Exception as error:
+        print(
+            f"[NOCPilot] AI request failed: {error}"
+        )
+
+        answer = (
+            "The LLM model is not loaded or could not be contacted."
+        )
 
     return {
         "query": query_text,
-        "answer": answer
+        "answer": answer,
     }

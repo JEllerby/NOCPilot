@@ -7,5 +7,7 @@ __pycache__/
 chroma.sqlite3
 *.sqlite3
 TestPrompt.txt
+backend/ai/data/ai_settings.json
 backend/network_data.json
-backend/network_data.json.tmp
+backend/main.py.backup
+frontend.backup-before-new-dashboard/

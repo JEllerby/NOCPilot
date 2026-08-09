@@ -34,6 +34,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.ai.client import test_ai_connection
+from backend.ai.models import (
+    AISettingsResponse,
+    AISettingsUpdate,
+)
+from backend.ai.settings import (
+    load_ai_settings,
+    public_ai_settings,
+    restore_default_ai_settings,
+    save_ai_settings,
+)
+
 from backend.monitoring.snmp import (
     collect_all_devices,
     collect_device_interfaces,
@@ -624,6 +636,81 @@ def explain_alert(
         "ticket_note": ai_result["ticket_note"],
         "source": ai_result["source"],
     }
+
+
+# =========================================================
+# AI SETTINGS ENDPOINTS
+# =========================================================
+
+@app.get(
+    "/settings/ai",
+    response_model=AISettingsResponse,
+)
+def get_ai_settings() -> dict[str, Any]:
+    """Return the current AI configuration without exposing the API key."""
+
+    return public_ai_settings(
+        load_ai_settings()
+    )
+
+
+@app.put(
+    "/settings/ai",
+    response_model=AISettingsResponse,
+)
+def update_ai_settings(
+    settings_update: AISettingsUpdate,
+) -> dict[str, Any]:
+    """Validate and save a new AI configuration."""
+
+    try:
+        return save_ai_settings(
+            settings_update
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except OSError as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to save AI settings: {error}",
+        ) from error
+
+
+@app.post("/settings/ai/test")
+def test_current_ai_connection() -> dict[str, Any]:
+    """Test the currently saved AI server and model."""
+
+    result = test_ai_connection()
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=503,
+            detail=result["message"],
+        )
+
+    return result
+
+
+@app.post(
+    "/settings/ai/restore",
+    response_model=AISettingsResponse,
+)
+def restore_ai_settings() -> dict[str, Any]:
+    """Restore the original NOCPilot AI configuration."""
+
+    try:
+        return restore_default_ai_settings()
+
+    except OSError as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to restore AI settings: {error}",
+        ) from error
 
 
 # =========================================================

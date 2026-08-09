@@ -6,7 +6,7 @@
 
   <title>NOCPilot</title>
 
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
 </head>
 
@@ -44,6 +44,7 @@
         <a href="#devicesSection">Devices</a>
         <a href="#alertsSection">Alerts</a>
         <a href="#aiSection">AI Assistant</a>
+        <a href="#settingsSection" id="settingsNavLink">Settings</a>
       </nav>
 
       <div class="header-right">
@@ -401,6 +402,204 @@
             </div>
           </div>
         </article>
+
+        <article id="settingsSection" class="panel settings-panel">
+          <div class="panel-border-animation" aria-hidden="true"></div>
+
+          <div class="section-heading settings-heading">
+            <div class="section-title-group">
+              <span class="section-icon settings-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.18.38.48.7.86.9.32.16.68.24 1.04.23H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z" />
+                </svg>
+              </span>
+
+              <div>
+                <p class="section-eyebrow">Platform Configuration</p>
+                <h2>AI Settings</h2>
+              </div>
+            </div>
+
+            <span class="settings-status-badge" id="aiSettingsStatusBadge">
+              <i></i>
+              Loading configuration
+            </span>
+          </div>
+
+          <div class="settings-layout">
+            <section class="settings-intro">
+              <p class="settings-kicker">AI Provider</p>
+              <h3>Connect NOCPilot to another AI server</h3>
+              <p>
+                Configure any OpenAI-compatible endpoint without editing
+                Python files or restarting NOCPilot.
+              </p>
+
+              <div class="settings-current">
+                <span>Current endpoint</span>
+                <code id="currentAiEndpoint">Loading...</code>
+              </div>
+
+              <div class="settings-security-note">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3 5 6v5c0 4.6 2.9 8 7 9.5 4.1-1.5 7-4.9 7-9.5V6l-7-3Z" />
+                  <path d="M9.5 12 11 13.5l3.5-4" />
+                </svg>
+
+                <p>
+                  The API key is stored only by the backend and is never sent
+                  back to the browser after saving.
+                </p>
+              </div>
+            </section>
+
+            <form id="aiSettingsForm" class="settings-form">
+              <div class="settings-field settings-field-wide">
+                <label for="aiProvider">Provider</label>
+
+                <select id="aiProvider" name="provider">
+                  <option value="openai_compatible">
+                    OpenAI Compatible
+                  </option>
+                </select>
+
+                <small>
+                  Supports LM Studio, vLLM, Ollama-compatible gateways, and
+                  other servers that expose the OpenAI API format.
+                </small>
+              </div>
+
+              <div class="settings-field settings-field-wide">
+                <label for="aiBaseUrl">Base URL</label>
+
+                <input
+                  type="url"
+                  id="aiBaseUrl"
+                  name="base_url"
+                  placeholder="http://25.5.202.103:1234/v1"
+                  autocomplete="url"
+                  required
+                />
+
+                <small>
+                  Include the protocol, port, and API prefix such as
+                  <code>/v1</code>.
+                </small>
+              </div>
+
+              <div class="settings-field">
+                <label for="aiModel">Model name</label>
+
+                <input
+                  type="text"
+                  id="aiModel"
+                  name="model"
+                  placeholder="qwen/qwen3-8b"
+                  autocomplete="off"
+                  required
+                />
+              </div>
+
+              <div class="settings-field">
+                <label for="aiTimeout">Timeout</label>
+
+                <div class="input-with-suffix">
+                  <input
+                    type="number"
+                    id="aiTimeout"
+                    name="timeout_seconds"
+                    min="5"
+                    max="300"
+                    step="1"
+                    required
+                  />
+
+                  <span>seconds</span>
+                </div>
+              </div>
+
+              <div class="settings-field settings-field-wide">
+                <label for="aiApiKey">API key</label>
+
+                <div class="password-field">
+                  <input
+                    type="password"
+                    id="aiApiKey"
+                    name="api_key"
+                    placeholder="Leave blank to keep the current key"
+                    autocomplete="new-password"
+                  />
+
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    id="toggleAiApiKey"
+                    aria-label="Show API key"
+                  >
+                    Show
+                  </button>
+                </div>
+
+                <small id="aiApiKeyState">
+                  Checking whether an API key is configured...
+                </small>
+              </div>
+
+              <label class="settings-toggle settings-field-wide">
+                <input
+                  type="checkbox"
+                  id="aiUseRag"
+                  name="use_rag"
+                />
+
+                <span class="settings-toggle-control" aria-hidden="true">
+                  <i></i>
+                </span>
+
+                <span>
+                  <strong>Use RAG documentation retrieval</strong>
+                  <small>
+                    Include relevant ChromaDB documentation in AI requests.
+                  </small>
+                </span>
+              </label>
+
+              <div
+                class="settings-message settings-field-wide"
+                id="aiSettingsMessage"
+                role="status"
+                aria-live="polite"
+              ></div>
+
+              <div class="settings-actions settings-field-wide">
+                <button
+                  type="submit"
+                  class="settings-primary-button"
+                  id="saveAiSettingsButton"
+                >
+                  Save Settings
+                </button>
+
+                <button
+                  type="button"
+                  class="settings-secondary-button"
+                  id="testAiConnectionButton"
+                >
+                  Save &amp; Test Connection
+                </button>
+
+                <button
+                  type="button"
+                  class="settings-restore-button"
+                  id="restoreAiSettingsButton"
+                >
+                  Restore Defaults
+                </button>
+              </div>
+            </form>
+          </div>
+        </article>
       </section>
     </main>
 
@@ -465,6 +664,6 @@
     </div>
   </aside>
 
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>
