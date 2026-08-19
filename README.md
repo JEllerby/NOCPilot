@@ -64,10 +64,9 @@ Help Tier 1 NOC analysts understand network alerts faster and reduce troubleshoo
 ### Create the Python environment and install dependencies
 
    ```bash
-   uv venv
+   uv sync
    source .venv/bin/activate      # Linux/macOS
    .venv\Scripts\Activate.ps1     # Windows PowerShell
-   uv sync
    ```
 
    Creates a virtual environment, activates it, and installs all required project dependencies.
@@ -81,64 +80,15 @@ Help Tier 1 NOC analysts understand network alerts faster and reduce troubleshoo
    Indexes the included troubleshooting PDF documents into ChromaDB. This step only needs to be repeated when the knowledge base documents are added or updated.
 
 
-### 1. Open the project in VS Code
+### Start the Backend
 
 ```bash
-cd nocpilot_starter
+uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 2. Start backend
+### Connect to Dashboard
 
-```bash
-cd backend
-python -m venv venv
-```
-
-On Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-On Mac/Linux:
-
-```bash
-source venv/bin/activate
-```
-
-Install requirements:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run backend:
-
-```bash
-uvicorn main:app --reload
-```
-
-Backend runs at:
-
-```text
-http://127.0.0.1:8000
-```
-
-API docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### 3. Start frontend
-
-Open this file in your browser:
-
-```text
-frontend/index.html
-```
-
-Or use VS Code Live Server extension.
+http://<machine ip address>:8000
 
 
 ## Configuration
@@ -247,10 +197,4 @@ The AI will generate an `Executive Summary` that explains the incident, `Possibl
 
 Users can also copy a generated ticket note to document the incident in their IT Service Management platform of their choosing.
 
-## Suggested Team Roles     -  Maybe remove
 
-- Networking student: scenarios, alert rules, NOC workflow
-- IT student 2: backend API
-- IT student 3: testing and documentation
-- IT student 4: deployment and security
-- Software dev student: frontend UI
