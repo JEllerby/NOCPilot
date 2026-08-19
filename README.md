@@ -181,13 +181,13 @@ uv run backend/ingest.py
 
 ## Demo Flow  -  Maybe remove
 
-1. Open dashboard
-2. Show all devices healthy
-3. Click Simulate Issue
-4. Alert appears
-5. Click alert
-6. AI explanation appears
-7. Copy ticket note
+### 1. Open dashboard
+### 2. Show all devices healthy
+### 3. Click Simulate Issue
+### 4. Alert appears
+### 5. Click alert
+### 6. AI explanation appears
+### 7. Copy ticket note
 
 
 ## Suggested Team Roles     -  Maybe remove
