@@ -15,6 +15,8 @@ from pysnmp.hlapi.v3arch.asyncio import (
 
 from .config import DEVICES
 
+SNMP_ENGINE = SnmpEngine()
+SNMP_SEMAPHORE = asyncio.Semaphore(4)
 
 # Standard system OIDs
 SYS_NAME_OID = "1.3.6.1.2.1.1.5.0"
@@ -45,16 +47,18 @@ async def snmp_get(
     """Retrieve one SNMP value."""
 
     try:
-        error_indication, error_status, error_index, var_binds = await get_cmd(
-            SnmpEngine(),
-            CommunityData(community, mpModel=1),
-            await UdpTransportTarget.create(
-                (ip_address, 161),
-                timeout=3,
+        async with SNMP_SEMAPHORE:
+            error_indication, error_status, error_index, var_binds = await get_cmd(
+                SNMP_ENGINE,
+                CommunityData(community, mpModel=1),
+                await UdpTransportTarget.create(
+                    (ip_address, 161),
+                    timeout=5,
                 retries=1,
             ),
             ContextData(),
             ObjectType(ObjectIdentity(oid)),
+            lookupMib=False,
         )
 
         if error_indication:
