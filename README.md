@@ -59,7 +59,7 @@ Help Tier 1 NOC analysts understand network alerts faster and reduce troubleshoo
 - Visual Studio Code
 
 
-## How to Run - Needs Updating
+## How to Run
 
 ### Create the Python environment and install dependencies
 
