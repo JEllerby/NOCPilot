@@ -73,8 +73,10 @@ Help Tier 1 NOC analysts understand network alerts faster and reduce troubleshoo
 
 ### Initialize the knowledge base
 
+   From the backend directory
+
    ```bash
-   python backend/ingest.py
+   uv run ingest.py
    ```
 
    Indexes the included troubleshooting PDF documents into ChromaDB. This step only needs to be repeated when the knowledge base documents are added or updated.
